@@ -33,6 +33,7 @@ filter.Contains(v) // v is of type uint64
 It will *always* return true if v was part of the initial construction (`Populate`) and almost always
 return false otherwise.
 
+An xor filter is immutable, it is concurrent.
 
 Though the filter itself does not use much memory, 
 the construction of the filter needs about 64 bytes of memory per set entry. 
