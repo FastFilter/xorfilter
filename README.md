@@ -1,4 +1,5 @@
 # xorfilter: Go library implementing xor filters
+[![GoDoc](https://godoc.org/github.com/FastFilter/xorfilter?status.svg)](https://godoc.org/github.com/FastFilter/xorfilter)
 
 
 Bloom filters are used to quickly check whether an element is part of a set.
