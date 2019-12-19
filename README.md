@@ -6,6 +6,9 @@ Bloom filters are used to quickly check whether an element is part of a set.
 Xor filters are a faster and more concise alternative to Bloom filters.
 They are also smaller than cuckoo filters.
 
+Reference: [Xor Filters: Faster and Smaller Than Bloom and Cuckoo Filters](https://arxiv.org/abs/1912.08258), Journal of Experimental Algorithmics (to appear).
+
+
 <img src="figures/comparison.png" width="50%"/>
 
 
