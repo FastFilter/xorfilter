@@ -45,8 +45,8 @@ For persistence, you only need to serialize the following data structure:
 
 ```Go
 type Xor8 struct {
-	seed         uint64
-	blockLength  uint32
-	fingerprints []uint8
+	Seed         uint64
+	BlockLength  uint32
+	Fingerprints []uint8
 }
 ```
