@@ -6,9 +6,9 @@ import (
 
 // Xor8 offers a 0.3% false-positive probability
 type Xor8 struct {
-	seed         uint64
-	blockLength  uint32
-	fingerprints []uint8
+	Seed         uint64
+	BlockLength  uint32
+	Fingerprints []uint8
 }
 
 type xorset struct {
@@ -65,45 +65,45 @@ func fingerprint(hash uint64) uint64 {
 
 // Contains tell you whether the key is likely part of the set
 func (filter *Xor8) Contains(key uint64) bool {
-	hash := mixsplit(key, filter.seed)
+	hash := mixsplit(key, filter.Seed)
 	f := uint8(fingerprint(hash))
 	r0 := uint32(hash)
 	r1 := uint32(rotl64(hash, 21))
 	r2 := uint32(rotl64(hash, 42))
-	h0 := reduce(r0, filter.blockLength)
-	h1 := reduce(r1, filter.blockLength) + filter.blockLength
-	h2 := reduce(r2, filter.blockLength) + 2*filter.blockLength
-	return f == (filter.fingerprints[h0] ^ filter.fingerprints[h1] ^
-		filter.fingerprints[h2])
+	h0 := reduce(r0, filter.BlockLength)
+	h1 := reduce(r1, filter.BlockLength) + filter.BlockLength
+	h2 := reduce(r2, filter.BlockLength) + 2*filter.BlockLength
+	return f == (filter.Fingerprints[h0] ^ filter.Fingerprints[h1] ^
+		filter.Fingerprints[h2])
 }
 
 func (filter *Xor8) geth0h1h2(k uint64) hashes {
-	hash := mixsplit(k, filter.seed)
+	hash := mixsplit(k, filter.Seed)
 	answer := hashes{}
 	answer.h = hash
 	r0 := uint32(hash)
 	r1 := uint32(rotl64(hash, 21))
 	r2 := uint32(rotl64(hash, 42))
 
-	answer.h0 = reduce(r0, filter.blockLength)
-	answer.h1 = reduce(r1, filter.blockLength)
-	answer.h2 = reduce(r2, filter.blockLength)
+	answer.h0 = reduce(r0, filter.BlockLength)
+	answer.h1 = reduce(r1, filter.BlockLength)
+	answer.h2 = reduce(r2, filter.BlockLength)
 	return answer
 }
 
 func (filter *Xor8) geth0(hash uint64) uint32 {
 	r0 := uint32(hash)
-	return reduce(r0, filter.blockLength)
+	return reduce(r0, filter.BlockLength)
 }
 
 func (filter *Xor8) geth1(hash uint64) uint32 {
 	r1 := uint32(rotl64(hash, 21))
-	return reduce(r1, filter.blockLength)
+	return reduce(r1, filter.BlockLength)
 }
 
 func (filter *Xor8) geth2(hash uint64) uint32 {
 	r2 := uint32(rotl64(hash, 42))
-	return reduce(r2, filter.blockLength)
+	return reduce(r2, filter.BlockLength)
 }
 
 // Populate fills the filter with provided keys.
@@ -113,18 +113,18 @@ func Populate(keys []uint64) *Xor8 {
 	capacity := 32 + uint32(math.Ceil(1.23*float64(size)))
 	capacity = capacity / 3 * 3 // round it down to a multiple of 3
 	filter := &Xor8{}
-	filter.blockLength = capacity / 3
-	filter.fingerprints = make([]uint8, capacity, capacity)
+	filter.BlockLength = capacity / 3
+	filter.Fingerprints = make([]uint8, capacity, capacity)
 	var rngcounter uint64 = 1
-	filter.seed = splitmix64(&rngcounter)
+	filter.Seed = splitmix64(&rngcounter)
 
-	Q0 := make([]keyindex, filter.blockLength, filter.blockLength)
-	Q1 := make([]keyindex, filter.blockLength, filter.blockLength)
-	Q2 := make([]keyindex, filter.blockLength, filter.blockLength)
+	Q0 := make([]keyindex, filter.BlockLength, filter.BlockLength)
+	Q1 := make([]keyindex, filter.BlockLength, filter.BlockLength)
+	Q2 := make([]keyindex, filter.BlockLength, filter.BlockLength)
 	stack := make([]keyindex, size, size)
-	sets0 := make([]xorset, filter.blockLength, filter.blockLength)
-	sets1 := make([]xorset, filter.blockLength, filter.blockLength)
-	sets2 := make([]xorset, filter.blockLength, filter.blockLength)
+	sets0 := make([]xorset, filter.BlockLength, filter.BlockLength)
+	sets1 := make([]xorset, filter.BlockLength, filter.BlockLength)
+	sets2 := make([]xorset, filter.BlockLength, filter.BlockLength)
 	for true {
 		for i := 0; i < size; i++ {
 			key := keys[i]
@@ -140,7 +140,7 @@ func Populate(keys []uint64) *Xor8 {
 		Q0size := 0
 		Q1size := 0
 		Q2size := 0
-		for i := uint32(0); i < filter.blockLength; i++ {
+		for i := uint32(0); i < filter.BlockLength; i++ {
 			if sets0[i].count == 1 {
 				Q0[Q0size].index = i
 				Q0[Q0size].hash = sets0[i].xormask
@@ -148,14 +148,14 @@ func Populate(keys []uint64) *Xor8 {
 			}
 		}
 
-		for i := uint32(0); i < filter.blockLength; i++ {
+		for i := uint32(0); i < filter.BlockLength; i++ {
 			if sets1[i].count == 1 {
 				Q1[Q1size].index = i
 				Q1[Q1size].hash = sets1[i].xormask
 				Q1size++
 			}
 		}
-		for i := uint32(0); i < filter.blockLength; i++ {
+		for i := uint32(0); i < filter.BlockLength; i++ {
 			if sets2[i].count == 1 {
 				Q2[Q2size].index = i
 				Q2[Q2size].hash = sets2[i].xormask
@@ -202,7 +202,7 @@ func Populate(keys []uint64) *Xor8 {
 				hash := keyindexvar.hash
 				h0 := filter.geth0(hash)
 				h2 := filter.geth2(hash)
-				keyindexvar.index += filter.blockLength
+				keyindexvar.index += filter.BlockLength
 				stack[stacksize] = keyindexvar
 				stacksize++
 				sets0[h0].xormask ^= hash
@@ -230,7 +230,7 @@ func Populate(keys []uint64) *Xor8 {
 				hash := keyindexvar.hash
 				h0 := filter.geth0(hash)
 				h1 := filter.geth1(hash)
-				keyindexvar.index += 2 * filter.blockLength
+				keyindexvar.index += 2 * filter.BlockLength
 
 				stack[stacksize] = keyindexvar
 				stacksize++
@@ -266,7 +266,7 @@ func Populate(keys []uint64) *Xor8 {
 		for i := range sets2 {
 			sets2[i] = xorset{0, 0}
 		}
-		filter.seed = splitmix64(&rngcounter)
+		filter.Seed = splitmix64(&rngcounter)
 	}
 
 	stacksize := size
@@ -274,14 +274,14 @@ func Populate(keys []uint64) *Xor8 {
 		stacksize--
 		ki := stack[stacksize]
 		val := uint8(fingerprint(ki.hash))
-		if ki.index < filter.blockLength {
-			val ^= filter.fingerprints[filter.geth1(ki.hash)+filter.blockLength] ^ filter.fingerprints[filter.geth2(ki.hash)+2*filter.blockLength]
-		} else if ki.index < 2*filter.blockLength {
-			val ^= filter.fingerprints[filter.geth0(ki.hash)] ^ filter.fingerprints[filter.geth2(ki.hash)+2*filter.blockLength]
+		if ki.index < filter.BlockLength {
+			val ^= filter.Fingerprints[filter.geth1(ki.hash)+filter.BlockLength] ^ filter.Fingerprints[filter.geth2(ki.hash)+2*filter.BlockLength]
+		} else if ki.index < 2*filter.BlockLength {
+			val ^= filter.Fingerprints[filter.geth0(ki.hash)] ^ filter.Fingerprints[filter.geth2(ki.hash)+2*filter.BlockLength]
 		} else {
-			val ^= filter.fingerprints[filter.geth0(ki.hash)] ^ filter.fingerprints[filter.geth1(ki.hash)+filter.blockLength]
+			val ^= filter.Fingerprints[filter.geth0(ki.hash)] ^ filter.Fingerprints[filter.geth1(ki.hash)+filter.BlockLength]
 		}
-		filter.fingerprints[ki.index] = val
+		filter.Fingerprints[ki.index] = val
 	}
 	return filter
 }
