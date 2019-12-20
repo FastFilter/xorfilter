@@ -107,6 +107,7 @@ func (filter *Xor8) geth2(hash uint64) uint32 {
 }
 
 // Populate fills the filter with provided keys.
+// The caller is responsible to ensure that there are no duplicate keys.
 func Populate(keys []uint64) *Xor8 {
 	size := len(keys)
 	capacity := 32 + uint32(math.Ceil(1.23*float64(size)))
