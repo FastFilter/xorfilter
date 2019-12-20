@@ -20,12 +20,12 @@ is not important to have a good hash function, but collision should be unlikely
 The current implementation has a false positive rate of about 0.3% and a memory usage
 of less than 9 bits per entry for sizeable sets.
 
-You construct the filter as follows:
+You construct the filter as follows starting from a slice of 64-bit integers:
 
 ```Go
 filter := xorfilter.Populate(keys) // keys is of type []uint64
 ```
-It turns an object of type `Xor8`.
+It returns an object of type `Xor8`. The 64-bit integers would typically be hash values of your objects.
 
 You can then query it as follows:
 
@@ -37,10 +37,9 @@ filter.Contains(v) // v is of type uint64
 It will *always* return true if v was part of the initial construction (`Populate`) and almost always
 return false otherwise.
 
-An xor filter is immutable, it is concurrent.
+An xor filter is immutable, it is concurrent. The expectation is that you build it once and use it many times.
 
-Though the filter itself does not use much memory, 
-the construction of the filter needs about 64 bytes of memory per set entry. 
+Though the filter itself does not use much memory, the construction of the filter needs many bytes of memory per set entry. 
 
 For persistence, you only need to serialize the following data structure:
 
