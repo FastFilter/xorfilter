@@ -50,3 +50,11 @@ type Xor8 struct {
 	Fingerprints []uint8
 }
 ```
+
+# Implements of xor filters in other programming languages
+
+* [Erlang](https://github.com/mpope9/exor_filter)
+* [Rust](https://github.com/codri/xorfilter-rs)
+* [C++](https://github.com/FastFilter/fastfilter_cpp)
+* [Java](https://github.com/FastFilter/fastfilter_java)
+* [C](https://github.com/FastFilter/xor_singleheader)
