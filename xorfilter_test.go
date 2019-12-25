@@ -41,7 +41,7 @@ func BenchmarkPopulate100000(b *testing.B) {
 		keys[i] = rand.Uint64()
 	}
 
-    b.ReportAllocs()
+	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		Populate(keys)
@@ -56,7 +56,7 @@ func BenchmarkContains100000(b *testing.B) {
 	}
 	filter := Populate(keys)
 
-    b.ReportAllocs()
+	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		filter.Contains(keys[n%len(keys)])
