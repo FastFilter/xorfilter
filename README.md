@@ -51,7 +51,7 @@ type Xor8 struct {
 }
 ```
 
-# Implements of xor filters in other programming languages
+# Implementations of xor filters in other programming languages
 
 * [Erlang](https://github.com/mpope9/exor_filter)
 * Rust: [1](https://github.com/bnclabs/xorfilter) and [2](https://github.com/codri/xorfilter-rs)
