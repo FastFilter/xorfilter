@@ -2,17 +2,19 @@ package xorfilter
 
 import (
 	"fmt"
-	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
+
+var rng = uint64(time.Now().UnixNano())
 
 func TestBasic(t *testing.T) {
 	testsize := 10000
 	keys := make([]uint64, testsize, testsize)
 	for i := range keys {
-		keys[i] = rand.Uint64()
+		keys[i] = splitmix64(&rng)
 	}
 	filter := Populate(keys)
 	for _, v := range keys {
@@ -24,7 +26,7 @@ func TestBasic(t *testing.T) {
 	fmt.Println("bits per entry ", bpv)
 	assert.Equal(t, true, bpv < 10.)
 	for i := 0; i < falsesize; i++ {
-		v := rand.Uint64()
+		v := splitmix64(&rng)
 		if filter.Contains(v) {
 			matches++
 		}
@@ -37,13 +39,15 @@ func TestBasic(t *testing.T) {
 func BenchmarkPopulate100000(b *testing.B) {
 	testsize := 10000
 	keys := make([]uint64, testsize, testsize)
-	for i := range keys {
-		keys[i] = rand.Uint64()
-	}
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
+		b.StopTimer()
+		for i := range keys {
+			keys[i] = splitmix64(&rng)
+		}
+		b.StartTimer()
 		Populate(keys)
 	}
 }
@@ -52,7 +56,7 @@ func BenchmarkContains100000(b *testing.B) {
 	testsize := 10000
 	keys := make([]uint64, testsize, testsize)
 	for i := range keys {
-		keys[i] = rand.Uint64()
+		keys[i] = splitmix64(&rng)
 	}
 	filter := Populate(keys)
 
