@@ -58,3 +58,4 @@ type Xor8 struct {
 * [C++](https://github.com/FastFilter/fastfilter_cpp)
 * [Java](https://github.com/FastFilter/fastfilter_java)
 * [C](https://github.com/FastFilter/xor_singleheader)
+* [Python](https://github.com/GreyDireWolf/pyxorfilter)
