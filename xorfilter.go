@@ -8,6 +8,7 @@ import (
 type Xor8 struct {
 	Seed         uint64
 	BlockLength  uint32
+	Size         uint32
 	Fingerprints []uint8
 }
 
@@ -113,6 +114,7 @@ func Populate(keys []uint64) *Xor8 {
 	capacity := 32 + uint32(math.Ceil(1.23*float64(size)))
 	capacity = capacity / 3 * 3 // round it down to a multiple of 3
 	filter := &Xor8{}
+	filter.Size = uint32(len(keys))
 	filter.BlockLength = capacity / 3
 	filter.Fingerprints = make([]uint8, capacity, capacity)
 	var rngcounter uint64 = 1
@@ -284,4 +286,24 @@ func Populate(keys []uint64) *Xor8 {
 		filter.Fingerprints[ki.index] = val
 	}
 	return filter
+}
+
+type Stat struct {
+	LastSegmentFree  float64
+	BitsPerValue     float64
+	BitsPerValuePlus float64
+}
+
+func (filter *Xor8) Stat() (stat Stat) {
+	lastSegment := len(filter.Fingerprints) - int(filter.BlockLength)
+	lastSegmentCnt := 0
+	for _, f := range filter.Fingerprints[lastSegment:] {
+		if f != 0 {
+			lastSegmentCnt++
+		}
+	}
+	stat.LastSegmentFree = 100 - 100*float64(lastSegmentCnt)/float64(filter.BlockLength)
+	stat.BitsPerValue = 8 * float64(len(filter.Fingerprints)) / float64(filter.Size)
+	stat.BitsPerValuePlus = (8*float64(lastSegment+lastSegmentCnt) + 1.25*float64(filter.BlockLength)) / float64(filter.Size)
+	return
 }

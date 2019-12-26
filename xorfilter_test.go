@@ -20,9 +20,11 @@ func TestBasic(t *testing.T) {
 	}
 	falsesize := 1000000
 	matches := 0
-	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(testsize)
-	fmt.Println("bits per entry ", bpv)
-	assert.Equal(t, true, bpv < 10.)
+	stat := filter.Stat()
+	fmt.Println("% of empty elements in last segment", stat.LastSegmentFree)
+	fmt.Println("bits per entry ", stat.BitsPerValue)
+	fmt.Println("bits per entry plus", stat.BitsPerValuePlus)
+	assert.Equal(t, true, stat.BitsPerValuePlus < 9.5)
 	for i := 0; i < falsesize; i++ {
 		v := rand.Uint64()
 		if filter.Contains(v) {
