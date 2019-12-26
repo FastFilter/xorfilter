@@ -222,7 +222,7 @@ func Populate(keys []uint64) *Xor8 {
 					Q2size++
 				}
 			}
-			for Q2size > 0 {
+			if Q0size == 0 && Q2size > 0 {
 				Q2size--
 				keyindexvar := Q2[Q2size]
 				index := keyindexvar.index
