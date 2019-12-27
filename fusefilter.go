@@ -91,8 +91,7 @@ func PopulateFuse8(keys []uint64) *Fuse8 {
 
 	for true {
 		// Add all keys to the construction array.
-		for i := 0; i < size; i++ {
-			key := keys[i]
+		for _, key := range keys {
 			hs := filter.makeKeyHashes(key)
 
 			H[hs.h0].xormask ^= hs.h
