@@ -21,7 +21,7 @@ func TestBasic(t *testing.T) {
 	falsesize := 1000000
 	matches := 0
 	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(testsize)
-	fmt.Println("Xor8 Filter:")
+	fmt.Println("Xor8 filter:")
 	fmt.Println("bits per entry ", bpv)
 	assert.Equal(t, true, bpv < 10.)
 	for i := 0; i < falsesize; i++ {

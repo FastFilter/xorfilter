@@ -23,6 +23,7 @@ func TestFuse8Basic(t *testing.T) {
 	falsesize := 1000000
 	matches := 0
 	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(testsize)
+        fmt.Println("Fuse8 filter:")
 	fmt.Println("bits per entry ", bpv)
 	assert.Equal(t, true, bpv < 9.101)
 	for i := 0; i < falsesize; i++ {
