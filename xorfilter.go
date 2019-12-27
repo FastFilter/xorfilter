@@ -51,7 +51,7 @@ func mixsplit(key, seed uint64) uint64 {
 }
 
 func rotl64(n uint64, c int) uint64 {
-	return (n << uint(c & 63)) | (n >> uint((-c) & 63))
+	return (n << uint(c&63)) | (n >> uint((-c)&63))
 }
 
 func reduce(hash, n uint32) uint32 {

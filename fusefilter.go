@@ -34,7 +34,7 @@ func (filter *Fuse8) Contains(key uint64) bool {
 	r2 := uint32(rotl64(hash, 42))
 	r3 := uint32((0xBF58476D1CE4E5B9 * hash) >> 32)
 	seg := reduce(r0, SEGMENT_COUNT)
-	h0 := (seg+0)*filter.SegmentLength + reduce(r1, filter.SegmentLength)
+	h0 := seg*filter.SegmentLength + reduce(r1, filter.SegmentLength)
 	h1 := (seg+1)*filter.SegmentLength + reduce(r2, filter.SegmentLength)
 	h2 := (seg+2)*filter.SegmentLength + reduce(r3, filter.SegmentLength)
 	return f == (filter.Fingerprints[h0] ^ filter.Fingerprints[h1] ^
@@ -72,7 +72,7 @@ func (filter *Fuse8) geth012(hash uint64) h012 {
 // Populate fills a Fuse8 filter with provided keys.
 // The caller is responsible for ensuring there are no duplicate keys provided.
 func PopulateFuse8(keys []uint64) *Fuse8 {
-        const FUSE_OVERHEAD = 1.0 / 0.879
+	const FUSE_OVERHEAD = 1.0 / 0.879
 
 	// ref: Algorithm 3
 	size := len(keys)
