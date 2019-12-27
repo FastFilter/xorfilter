@@ -1,13 +1,5 @@
 package xorfilter
 
-import (
-	"math"
-)
-
-const ARITY = 3
-const SEGMENT_COUNT = 100
-const SLOTS = SEGMENT_COUNT + ARITY - 1
-
 // The Fuse8 xor filter uses 8-bit fingerprints. It offers the same <0.4% false-positive probability
 // as the xor filter, but uses less space (~9.1 bits/entry vs ~9.9 bits/entry).
 //
@@ -28,6 +20,10 @@ type h012 struct {
 	h1 uint32
 	h2 uint32
 }
+
+const ARITY = 3
+const SEGMENT_COUNT = 100
+const SLOTS = SEGMENT_COUNT + ARITY - 1
 
 // Contains returns `true` if key is part of the set with a false positive probability of <0.4%.
 func (filter *Fuse8) Contains(key uint64) bool {
@@ -76,9 +72,11 @@ func (filter *Fuse8) geth012(hash uint64) h012 {
 // Populate fills a Fuse8 filter with provided keys.
 // The caller is responsible for ensuring there are no duplicate keys provided.
 func PopulateFuse8(keys []uint64) *Fuse8 {
+        const FUSE_OVERHEAD = 1.0 / 0.879
+
 	// ref: Algorithm 3
 	size := len(keys)
-	capacity := uint32(math.Ceil(float64(1.0) / float64(0.879) * float64(size)))
+	capacity := uint32(FUSE_OVERHEAD * float64(size))
 	capacity = capacity / SLOTS * SLOTS
 	rngcounter := uint64(1)
 
