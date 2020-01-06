@@ -2,32 +2,32 @@ package xorfilter
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
-var rng = uint64(time.Now().UnixNano())
+const NUM_KEYS = 1e6
 
-func TestBasic(t *testing.T) {
-	testsize := 10000
-	keys := make([]uint64, testsize, testsize)
+func TestFuse8Basic(t *testing.T) {
+	testsize := 1000000
+	keys := make([]uint64, NUM_KEYS)
 	for i := range keys {
-		keys[i] = splitmix64(&rng)
+		keys[i] = rand.Uint64()
 	}
-	filter := Populate(keys)
+	filter := PopulateFuse8(keys)
 	for _, v := range keys {
 		assert.Equal(t, true, filter.Contains(v))
 	}
 	falsesize := 1000000
 	matches := 0
 	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(testsize)
-	fmt.Println("Xor8 filter:")
+        fmt.Println("Fuse8 filter:")
 	fmt.Println("bits per entry ", bpv)
-	assert.Equal(t, true, bpv < 10.)
+	assert.Equal(t, true, bpv < 9.101)
 	for i := 0; i < falsesize; i++ {
-		v := splitmix64(&rng)
+		v := rand.Uint64()
 		if filter.Contains(v) {
 			matches++
 		}
@@ -37,31 +37,25 @@ func TestBasic(t *testing.T) {
 	assert.Equal(t, true, fpp < 0.40)
 }
 
-func BenchmarkPopulate100000(b *testing.B) {
-	testsize := 10000
-	keys := make([]uint64, testsize, testsize)
+func BenchmarkFuse8Populate1000000(b *testing.B) {
+	keys := make([]uint64, NUM_KEYS, NUM_KEYS)
+	for i := range keys {
+		keys[i] = rand.Uint64()
+	}
 
-	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		b.StopTimer()
-		for i := range keys {
-			keys[i] = splitmix64(&rng)
-		}
-		b.StartTimer()
-		Populate(keys)
+		PopulateFuse8(keys)
 	}
 }
 
-func BenchmarkContains100000(b *testing.B) {
-	testsize := 10000
-	keys := make([]uint64, testsize, testsize)
+func BenchmarkFuse8Contains1000000(b *testing.B) {
+	keys := make([]uint64, NUM_KEYS, NUM_KEYS)
 	for i := range keys {
-		keys[i] = splitmix64(&rng)
+		keys[i] = rand.Uint64()
 	}
-	filter := Populate(keys)
+	filter := PopulateFuse8(keys)
 
-	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		filter.Contains(keys[n%len(keys)])
