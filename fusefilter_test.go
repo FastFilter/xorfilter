@@ -16,7 +16,7 @@ func TestFuse8Basic(t *testing.T) {
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-	filter,_ := PopulateFuse8(keys)
+	filter, _ := PopulateFuse8(keys)
 	for _, v := range keys {
 		assert.Equal(t, true, filter.Contains(v))
 	}
@@ -54,10 +54,32 @@ func BenchmarkFuse8Contains1000000(b *testing.B) {
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-	filter,_ := PopulateFuse8(keys)
+	filter, _ := PopulateFuse8(keys)
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		filter.Contains(keys[n%len(keys)])
+	}
+}
+
+var fusedbig *Fuse8
+
+func fusedbigInit() {
+	fmt.Println("Fuse setup")
+	keys := make([]uint64, 50000000, 50000000)
+	for i := range keys {
+		keys[i] = rand.Uint64()
+	}
+	fusedbig, _ = PopulateFuse8(keys)
+	fmt.Println("Fuse setup ok")
+}
+
+func BenchmarkFuse8Contains50000000(b *testing.B) {
+	if fusedbig == nil {
+		fusedbigInit()
+	}
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		fusedbig.Contains(rand.Uint64())
 	}
 }
