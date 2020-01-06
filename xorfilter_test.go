@@ -2,6 +2,7 @@ package xorfilter
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -16,7 +17,7 @@ func TestBasic(t *testing.T) {
 	for i := range keys {
 		keys[i] = splitmix64(&rng)
 	}
-	filter,_ := Populate(keys)
+	filter, _ := Populate(keys)
 	for _, v := range keys {
 		assert.Equal(t, true, filter.Contains(v))
 	}
@@ -59,11 +60,33 @@ func BenchmarkContains100000(b *testing.B) {
 	for i := range keys {
 		keys[i] = splitmix64(&rng)
 	}
-	filter,_ := Populate(keys)
+	filter, _ := Populate(keys)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		filter.Contains(keys[n%len(keys)])
+	}
+}
+
+var xor8big *Xor8
+
+func xor8bigInit() {
+	fmt.Println("Xor8 setup")
+	keys := make([]uint64, 50000000, 50000000)
+	for i := range keys {
+		keys[i] = rand.Uint64()
+	}
+	xor8big, _ = Populate(keys)
+	fmt.Println("Xor8 setup ok")
+}
+
+func BenchmarkXor8bigContains50000000(b *testing.B) {
+	if xor8big == nil {
+		xor8bigInit()
+	}
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		xor8big.Contains(rand.Uint64())
 	}
 }

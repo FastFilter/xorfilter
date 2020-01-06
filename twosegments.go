@@ -1,14 +1,14 @@
 package xorfilter
 
-
 import (
 	"errors"
 	"math"
 )
 
-
-// Xor8 offers a 0.3% false-positive probability
-type Xor8TwoSegment struct {
+// Xor8TwoSegment offers a ~0.3% false-positive probability,
+// Version of Xor8 that collocates the first two hits
+// credit: Sokolov Yura (@funny-falcon)
+type experimentalXor8TwoSegment struct {
 	Seed         uint64
 	BlockLength  uint32
 	Size         uint32
@@ -16,7 +16,9 @@ type Xor8TwoSegment struct {
 }
 
 // Contains tell you whether the key is likely part of the set
-func (filter *Xor8TwoSegment) Contains(key uint64) bool {
+// it is a proof-of concept and not recommended because
+// there is no guarantee that it will work within a reasonably time.
+func (filter *experimentalXor8TwoSegment) Contains(key uint64) bool {
 	hash := mixsplit(key, filter.Seed)
 	f := uint8(fingerprint(hash))
 	r0 := uint32(hash)
@@ -29,7 +31,7 @@ func (filter *Xor8TwoSegment) Contains(key uint64) bool {
 		filter.Fingerprints[h2])
 }
 
-func (filter *Xor8TwoSegment) geth0h1h2(k uint64) hashes {
+func (filter *experimentalXor8TwoSegment) geth0h1h2(k uint64) hashes {
 	hash := mixsplit(k, filter.Seed)
 	answer := hashes{}
 	answer.h = hash
@@ -43,27 +45,27 @@ func (filter *Xor8TwoSegment) geth0h1h2(k uint64) hashes {
 	return answer
 }
 
-func (filter *Xor8TwoSegment) geth0(hash uint64) uint32 {
+func (filter *experimentalXor8TwoSegment) geth0(hash uint64) uint32 {
 	r0 := uint32(hash)
 	return reduce(r0, filter.BlockLength)
 }
 
-func (filter *Xor8TwoSegment) geth1(h0 uint32, hash uint64) uint32 {
+func (filter *experimentalXor8TwoSegment) geth1(h0 uint32, hash uint64) uint32 {
 	r1 := uint32(rotl64(hash, 21))
 	return h0 ^ (reduce(r1, 63) + 1)
 }
 
-func (filter *Xor8TwoSegment) geth2(hash uint64) uint32 {
+func (filter *experimentalXor8TwoSegment) geth2(hash uint64) uint32 {
 	r2 := uint32(rotl64(hash, 42))
 	return reduce(r2, filter.BlockLength)
 }
 
-// Populate fills the filter with provided keys.
+// PopulateTwoSegment fills the filter with provided keys.
 // The caller is responsible to ensure that there are no duplicate keys.
-func PopulateTwoSegment(keys []uint64)  (*Xor8TwoSegment, error)  {
+func experimentalPopulateTwoSegment(keys []uint64) (*experimentalXor8TwoSegment, error) {
 	size := len(keys)
-	capacity := 32 + uint32(math.Ceil(1.27*float64(size)))
-	filter := &Xor8TwoSegment{}
+	capacity := 32 + uint32(math.Ceil(1.27*float64(size))) // it is not clear where 1.27 comes from
+	filter := &experimentalXor8TwoSegment{}
 	filter.Size = uint32(len(keys))
 	filter.BlockLength = capacity / 2
 	filter.BlockLength = (filter.BlockLength + 63) &^ 63 // round up to 64 bit blocks
@@ -79,7 +81,7 @@ func PopulateTwoSegment(keys []uint64)  (*Xor8TwoSegment, error)  {
 	sets1 := make([]xorset, filter.BlockLength, filter.BlockLength)
 	iterations := 0
 	for true {
-		iterations += 1
+		iterations++
 		if iterations > MaxIterations {
 			return nil, errors.New("too many iterations, you probably have duplicate keys")
 		}
