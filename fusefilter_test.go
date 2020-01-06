@@ -16,14 +16,14 @@ func TestFuse8Basic(t *testing.T) {
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-	filter := PopulateFuse8(keys)
+	filter,_ := PopulateFuse8(keys)
 	for _, v := range keys {
 		assert.Equal(t, true, filter.Contains(v))
 	}
 	falsesize := 1000000
 	matches := 0
 	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(testsize)
-        fmt.Println("Fuse8 filter:")
+	fmt.Println("Fuse8 filter:")
 	fmt.Println("bits per entry ", bpv)
 	assert.Equal(t, true, bpv < 9.101)
 	for i := 0; i < falsesize; i++ {
@@ -54,7 +54,7 @@ func BenchmarkFuse8Contains1000000(b *testing.B) {
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-	filter := PopulateFuse8(keys)
+	filter,_ := PopulateFuse8(keys)
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {

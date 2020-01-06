@@ -16,7 +16,7 @@ func TestBasic(t *testing.T) {
 	for i := range keys {
 		keys[i] = splitmix64(&rng)
 	}
-	filter := Populate(keys)
+	filter,_ := Populate(keys)
 	for _, v := range keys {
 		assert.Equal(t, true, filter.Contains(v))
 	}
@@ -59,7 +59,7 @@ func BenchmarkContains100000(b *testing.B) {
 	for i := range keys {
 		keys[i] = splitmix64(&rng)
 	}
-	filter := Populate(keys)
+	filter,_ := Populate(keys)
 
 	b.ReportAllocs()
 	b.ResetTimer()

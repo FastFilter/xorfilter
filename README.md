@@ -23,7 +23,7 @@ of less than 9 bits per entry for sizeable sets.
 You construct the filter as follows starting from a slice of 64-bit integers:
 
 ```Go
-filter := xorfilter.Populate(keys) // keys is of type []uint64
+filter,_ := xorfilter.Populate(keys) // keys is of type []uint64
 ```
 It returns an object of type `Xor8`. The 64-bit integers would typically be hash values of your objects.
 
@@ -50,6 +50,22 @@ type Xor8 struct {
 	Fingerprints []uint8
 }
 ```
+
+# Duplicate keys
+
+When constructing the filter, you should ensure that there is no duplicate keys. If you think
+that this might happen, then you should check the error condition. 
+
+```Go
+filter,err := xorfilter.Populate(keys) // keys is of type []uint64
+if err != nil {
+	// you have duplicate keys, de-duplicate them?
+}
+```
+
+Effectively, an error is returned when the filter could not be build after `MaxIterations`
+iterations (default to 100).
+
 
 # Implementations of xor filters in other programming languages
 

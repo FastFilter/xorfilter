@@ -1,6 +1,7 @@
 package xorfilter
 
 import (
+	"errors"
 	"math"
 )
 
@@ -106,9 +107,14 @@ func (filter *Xor8) geth2(hash uint64) uint32 {
 	return reduce(r2, filter.BlockLength)
 }
 
+// The maximum  number of iterations allowed before the populate function returns an error
+var MaxIterations = 100
+
 // Populate fills the filter with provided keys.
 // The caller is responsible to ensure that there are no duplicate keys.
-func Populate(keys []uint64) *Xor8 {
+// The function may return an error after too many iterations: it is almost
+// surely an indication that you have duplicate keys.
+func Populate(keys []uint64) (*Xor8, error) {
 	size := len(keys)
 	capacity := 32 + uint32(math.Ceil(1.23*float64(size)))
 	capacity = capacity / 3 * 3 // round it down to a multiple of 3
@@ -125,7 +131,12 @@ func Populate(keys []uint64) *Xor8 {
 	sets0 := make([]xorset, filter.BlockLength, filter.BlockLength)
 	sets1 := make([]xorset, filter.BlockLength, filter.BlockLength)
 	sets2 := make([]xorset, filter.BlockLength, filter.BlockLength)
+	iterations := 0
 	for true {
+		iterations += 1
+		if iterations > MaxIterations {
+			return nil, errors.New("too many iterations, you probably have duplicate keys")
+		}
 		for i := 0; i < size; i++ {
 			key := keys[i]
 			hs := filter.geth0h1h2(key)
@@ -283,5 +294,5 @@ func Populate(keys []uint64) *Xor8 {
 		}
 		filter.Fingerprints[ki.index] = val
 	}
-	return filter
+	return filter, nil
 }

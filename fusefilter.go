@@ -1,5 +1,9 @@
 package xorfilter
 
+import (
+	"errors"
+)
+
 // The Fuse8 xor filter uses 8-bit fingerprints. It offers the same <0.4% false-positive probability
 // as the xor filter, but uses less space (~9.1 bits/entry vs ~9.9 bits/entry).
 //
@@ -71,7 +75,9 @@ func (filter *Fuse8) geth012(hash uint64) h012 {
 
 // Populate fills a Fuse8 filter with provided keys.
 // The caller is responsible for ensuring there are no duplicate keys provided.
-func PopulateFuse8(keys []uint64) *Fuse8 {
+// The function may return an error after too many iterations: it is almost
+// surely an indication that you have duplicate keys.
+func PopulateFuse8(keys []uint64) (*Fuse8, error) {
 	const FUSE_OVERHEAD = 1.0 / 0.879
 
 	// ref: Algorithm 3
@@ -88,8 +94,13 @@ func PopulateFuse8(keys []uint64) *Fuse8 {
 	H := make([]xorset, capacity, capacity)
 	Q := make([]keyindex, capacity, capacity)
 	stack := make([]keyindex, size, size)
-
+	iterations := 0
 	for true {
+		iterations += 1
+		if iterations > MaxIterations {
+			return nil, errors.New("too many iterations, you probably have duplicate keys")
+		}
+
 		// Add all keys to the construction array.
 		for _, key := range keys {
 			hs := filter.makeKeyHashes(key)
@@ -181,5 +192,5 @@ func PopulateFuse8(keys []uint64) *Fuse8 {
 		filter.Fingerprints[ki.index] = fp
 	}
 
-	return filter
+	return filter, nil
 }
