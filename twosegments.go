@@ -1,3 +1,5 @@
+// This is experimental work. It may not work.
+
 package xorfilter
 
 import (
