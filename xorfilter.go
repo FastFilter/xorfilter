@@ -131,168 +131,153 @@ func Populate(keys []uint64) (*Xor8, error) {
 	sets0 := make([]xorset, filter.BlockLength, filter.BlockLength)
 	sets1 := make([]xorset, filter.BlockLength, filter.BlockLength)
 	sets2 := make([]xorset, filter.BlockLength, filter.BlockLength)
-	iterations := 0
-	for true {
-		iterations += 1
-		if iterations > MaxIterations {
-			return nil, errors.New("too many iterations, you probably have duplicate keys")
+	// iterations := 0
+	// for true {
+	// iterations += 1
+	// if iterations > MaxIterations {
+	// }
+	for i := 0; i < size; i++ {
+		key := keys[i]
+		hs := filter.geth0h1h2(key)
+		sets0[hs.h0].xormask ^= hs.h
+		sets0[hs.h0].count++
+		sets1[hs.h1].xormask ^= hs.h
+		sets1[hs.h1].count++
+		sets2[hs.h2].xormask ^= hs.h
+		sets2[hs.h2].count++
+	}
+	// scan for values with a count of one
+	Q0size := 0
+	Q1size := 0
+	Q2size := 0
+	for i := uint32(0); i < filter.BlockLength; i++ {
+		if sets0[i].count == 1 {
+			Q0[Q0size].index = i
+			Q0[Q0size].hash = sets0[i].xormask
+			Q0size++
 		}
-		for i := 0; i < size; i++ {
-			key := keys[i]
-			hs := filter.geth0h1h2(key)
-			sets0[hs.h0].xormask ^= hs.h
-			sets0[hs.h0].count++
-			sets1[hs.h1].xormask ^= hs.h
-			sets1[hs.h1].count++
-			sets2[hs.h2].xormask ^= hs.h
-			sets2[hs.h2].count++
-		}
-		// scan for values with a count of one
-		Q0size := 0
-		Q1size := 0
-		Q2size := 0
-		for i := uint32(0); i < filter.BlockLength; i++ {
-			if sets0[i].count == 1 {
-				Q0[Q0size].index = i
-				Q0[Q0size].hash = sets0[i].xormask
-				Q0size++
-			}
-		}
+	}
 
-		for i := uint32(0); i < filter.BlockLength; i++ {
-			if sets1[i].count == 1 {
-				Q1[Q1size].index = i
-				Q1[Q1size].hash = sets1[i].xormask
+	for i := uint32(0); i < filter.BlockLength; i++ {
+		if sets1[i].count == 1 {
+			Q1[Q1size].index = i
+			Q1[Q1size].hash = sets1[i].xormask
+			Q1size++
+		}
+	}
+	for i := uint32(0); i < filter.BlockLength; i++ {
+		if sets2[i].count == 1 {
+			Q2[Q2size].index = i
+			Q2[Q2size].hash = sets2[i].xormask
+			Q2size++
+		}
+	}
+	stacksize := 0
+	for Q0size+Q1size+Q2size > 0 {
+		for Q0size > 0 {
+			Q0size--
+			keyindexvar := Q0[Q0size]
+			index := keyindexvar.index
+			if sets0[index].count == 0 {
+				continue // not actually possible after the initial scan.
+			}
+			hash := keyindexvar.hash
+			h1 := filter.geth1(hash)
+			h2 := filter.geth2(hash)
+			stack[stacksize] = keyindexvar
+			stacksize++
+			sets1[h1].xormask ^= hash
+
+			sets1[h1].count--
+			if sets1[h1].count == 1 {
+				Q1[Q1size].index = h1
+				Q1[Q1size].hash = sets1[h1].xormask
 				Q1size++
 			}
-		}
-		for i := uint32(0); i < filter.BlockLength; i++ {
-			if sets2[i].count == 1 {
-				Q2[Q2size].index = i
-				Q2[Q2size].hash = sets2[i].xormask
+			sets2[h2].xormask ^= hash
+			sets2[h2].count--
+			if sets2[h2].count == 1 {
+				Q2[Q2size].index = h2
+				Q2[Q2size].hash = sets2[h2].xormask
 				Q2size++
 			}
 		}
-		stacksize := 0
-		for Q0size+Q1size+Q2size > 0 {
-			for Q0size > 0 {
-				Q0size--
-				keyindexvar := Q0[Q0size]
-				index := keyindexvar.index
-				if sets0[index].count == 0 {
-					continue // not actually possible after the initial scan.
-				}
-				hash := keyindexvar.hash
-				h1 := filter.geth1(hash)
-				h2 := filter.geth2(hash)
-				stack[stacksize] = keyindexvar
-				stacksize++
-				sets1[h1].xormask ^= hash
-
-				sets1[h1].count--
-				if sets1[h1].count == 1 {
-					Q1[Q1size].index = h1
-					Q1[Q1size].hash = sets1[h1].xormask
-					Q1size++
-				}
-				sets2[h2].xormask ^= hash
-				sets2[h2].count--
-				if sets2[h2].count == 1 {
-					Q2[Q2size].index = h2
-					Q2[Q2size].hash = sets2[h2].xormask
-					Q2size++
-				}
+		for Q1size > 0 {
+			Q1size--
+			keyindexvar := Q1[Q1size]
+			index := keyindexvar.index
+			if sets1[index].count == 0 {
+				continue
 			}
-			for Q1size > 0 {
-				Q1size--
-				keyindexvar := Q1[Q1size]
-				index := keyindexvar.index
-				if sets1[index].count == 0 {
-					continue
-				}
-				hash := keyindexvar.hash
-				h0 := filter.geth0(hash)
-				h2 := filter.geth2(hash)
-				keyindexvar.index += filter.BlockLength
-				stack[stacksize] = keyindexvar
-				stacksize++
-				sets0[h0].xormask ^= hash
-				sets0[h0].count--
-				if sets0[h0].count == 1 {
-					Q0[Q0size].index = h0
-					Q0[Q0size].hash = sets0[h0].xormask
-					Q0size++
-				}
-				sets2[h2].xormask ^= hash
-				sets2[h2].count--
-				if sets2[h2].count == 1 {
-					Q2[Q2size].index = h2
-					Q2[Q2size].hash = sets2[h2].xormask
-					Q2size++
-				}
+			hash := keyindexvar.hash
+			h0 := filter.geth0(hash)
+			h2 := filter.geth2(hash)
+			keyindexvar.index += filter.BlockLength
+			stack[stacksize] = keyindexvar
+			stacksize++
+			sets0[h0].xormask ^= hash
+			sets0[h0].count--
+			if sets0[h0].count == 1 {
+				Q0[Q0size].index = h0
+				Q0[Q0size].hash = sets0[h0].xormask
+				Q0size++
 			}
-			for Q2size > 0 {
-				Q2size--
-				keyindexvar := Q2[Q2size]
-				index := keyindexvar.index
-				if sets2[index].count == 0 {
-					continue
-				}
-				hash := keyindexvar.hash
-				h0 := filter.geth0(hash)
-				h1 := filter.geth1(hash)
-				keyindexvar.index += 2 * filter.BlockLength
-
-				stack[stacksize] = keyindexvar
-				stacksize++
-				sets0[h0].xormask ^= hash
-				sets0[h0].count--
-				if sets0[h0].count == 1 {
-					Q0[Q0size].index = h0
-					Q0[Q0size].hash = sets0[h0].xormask
-					Q0size++
-				}
-				sets1[h1].xormask ^= hash
-				sets1[h1].count--
-				if sets1[h1].count == 1 {
-					Q1[Q1size].index = h1
-					Q1[Q1size].hash = sets1[h1].xormask
-					Q1size++
-				}
-
+			sets2[h2].xormask ^= hash
+			sets2[h2].count--
+			if sets2[h2].count == 1 {
+				Q2[Q2size].index = h2
+				Q2[Q2size].hash = sets2[h2].xormask
+				Q2size++
 			}
 		}
+		for Q2size > 0 {
+			Q2size--
+			keyindexvar := Q2[Q2size]
+			index := keyindexvar.index
+			if sets2[index].count == 0 {
+				continue
+			}
+			hash := keyindexvar.hash
+			h0 := filter.geth0(hash)
+			h1 := filter.geth1(hash)
+			keyindexvar.index += 2 * filter.BlockLength
 
-		if stacksize == size {
-			// success
-			break
-		}
+			stack[stacksize] = keyindexvar
+			stacksize++
+			sets0[h0].xormask ^= hash
+			sets0[h0].count--
+			if sets0[h0].count == 1 {
+				Q0[Q0size].index = h0
+				Q0[Q0size].hash = sets0[h0].xormask
+				Q0size++
+			}
+			sets1[h1].xormask ^= hash
+			sets1[h1].count--
+			if sets1[h1].count == 1 {
+				Q1[Q1size].index = h1
+				Q1[Q1size].hash = sets1[h1].xormask
+				Q1size++
+			}
 
-		for i := range sets0 {
-			sets0[i] = xorset{0, 0}
 		}
-		for i := range sets1 {
-			sets1[i] = xorset{0, 0}
-		}
-		for i := range sets2 {
-			sets2[i] = xorset{0, 0}
-		}
-		filter.Seed = splitmix64(&rngcounter)
 	}
 
-	stacksize := size
-	for stacksize > 0 {
-		stacksize--
-		ki := stack[stacksize]
-		val := uint8(fingerprint(ki.hash))
-		if ki.index < filter.BlockLength {
-			val ^= filter.Fingerprints[filter.geth1(ki.hash)+filter.BlockLength] ^ filter.Fingerprints[filter.geth2(ki.hash)+2*filter.BlockLength]
-		} else if ki.index < 2*filter.BlockLength {
-			val ^= filter.Fingerprints[filter.geth0(ki.hash)] ^ filter.Fingerprints[filter.geth2(ki.hash)+2*filter.BlockLength]
-		} else {
-			val ^= filter.Fingerprints[filter.geth0(ki.hash)] ^ filter.Fingerprints[filter.geth1(ki.hash)+filter.BlockLength]
+	if stacksize == size {
+		// success
+		for stacksize > 0 {
+			stacksize--
+			ki := stack[stacksize]
+			val := uint8(fingerprint(ki.hash))
+			if ki.index < filter.BlockLength {
+				val ^= filter.Fingerprints[filter.geth1(ki.hash)+filter.BlockLength] ^ filter.Fingerprints[filter.geth2(ki.hash)+2*filter.BlockLength]
+			} else if ki.index < 2*filter.BlockLength {
+				val ^= filter.Fingerprints[filter.geth0(ki.hash)] ^ filter.Fingerprints[filter.geth2(ki.hash)+2*filter.BlockLength]
+			} else {
+				val ^= filter.Fingerprints[filter.geth0(ki.hash)] ^ filter.Fingerprints[filter.geth1(ki.hash)+filter.BlockLength]
+			}
+			filter.Fingerprints[ki.index] = val
 		}
-		filter.Fingerprints[ki.index] = val
+		return filter, nil
 	}
-	return filter, nil
+	return nil, errors.New("you probably have duplicate keys")
 }
