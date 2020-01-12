@@ -1,8 +1,6 @@
 package xorfilter
 
-import (
-	"errors"
-)
+import "errors"
 
 // The Fuse8 xor filter uses 8-bit fingerprints. It offers the same <0.4% false-positive probability
 // as the xor filter, but uses less space (~9.1 bits/entry vs ~9.9 bits/entry).
@@ -94,103 +92,106 @@ func PopulateFuse8(keys []uint64) (*Fuse8, error) {
 	H := make([]xorset, capacity, capacity)
 	Q := make([]keyindex, capacity, capacity)
 	stack := make([]keyindex, size, size)
-	iterations := 0
-	for true {
-		iterations += 1
-		if iterations > MaxIterations {
-			return nil, errors.New("too many iterations, you probably have duplicate keys")
-		}
+	// iterations := 0
+	// for true {
+	// 	iterations += 1
+	// 	if iterations > MaxIterations {
+	// 		return nil, errors.New("too many iterations, you probably have duplicate keys")
+	// 	}
 
-		// Add all keys to the construction array.
-		for _, key := range keys {
-			hs := filter.makeKeyHashes(key)
+	// Add all keys to the construction array.
+	for _, key := range keys {
+		hs := filter.makeKeyHashes(key)
 
-			H[hs.h0].xormask ^= hs.h
-			H[hs.h0].count++
-			H[hs.h1].xormask ^= hs.h
-			H[hs.h1].count++
-			H[hs.h2].xormask ^= hs.h
-			H[hs.h2].count++
-		}
-
-		Qsize := 0
-		// Add sets with one key to the queue.
-		for i := uint32(0); i < capacity; i++ {
-			if H[i].count == 1 {
-				Q[Qsize].index = i
-				Q[Qsize].hash = H[i].xormask
-				Qsize++
-			}
-		}
-
-		stacksize := 0
-		for Qsize > 0 {
-			Qsize--
-			ki := Q[Qsize]
-			index := ki.index
-			if H[index].count == 0 {
-				continue // not actually possible after the initial scan
-			}
-
-			hash := ki.hash
-			hs := filter.geth012(hash)
-
-			stack[stacksize] = ki
-			stacksize++
-
-			// Remove key added to stack from all sets in the construction array and
-			// enqueue sets that now have one key.
-			H[hs.h0].xormask ^= hash
-			H[hs.h0].count--
-			if H[hs.h0].count == 1 {
-				Q[Qsize].index = hs.h0
-				Q[Qsize].hash = H[hs.h0].xormask
-				Qsize++
-			}
-			H[hs.h1].xormask ^= hash
-			H[hs.h1].count--
-			if H[hs.h1].count == 1 {
-				Q[Qsize].index = hs.h1
-				Q[Qsize].hash = H[hs.h1].xormask
-				Qsize++
-			}
-			H[hs.h2].xormask ^= hash
-			H[hs.h2].count--
-			if H[hs.h2].count == 1 {
-				Q[Qsize].index = hs.h2
-				Q[Qsize].hash = H[hs.h2].xormask
-				Qsize++
-			}
-		}
-
-		if stacksize == size {
-			// Success
-			break
-		}
-
-		for i := range H {
-			H[i] = xorset{0, 0}
-		}
-		filter.Seed = splitmix64(&rngcounter)
+		H[hs.h0].xormask ^= hs.h
+		H[hs.h0].count++
+		H[hs.h1].xormask ^= hs.h
+		H[hs.h1].count++
+		H[hs.h2].xormask ^= hs.h
+		H[hs.h2].count++
 	}
+
+	Qsize := 0
+	// Add sets with one key to the queue.
+	for i := uint32(0); i < capacity; i++ {
+		if H[i].count == 1 {
+			Q[Qsize].index = i
+			Q[Qsize].hash = H[i].xormask
+			Qsize++
+		}
+	}
+
+	stacksize := 0
+	for Qsize > 0 {
+		Qsize--
+		ki := Q[Qsize]
+		index := ki.index
+		if H[index].count == 0 {
+			continue // not actually possible after the initial scan
+		}
+
+		hash := ki.hash
+		hs := filter.geth012(hash)
+
+		stack[stacksize] = ki
+		stacksize++
+
+		// Remove key added to stack from all sets in the construction array and
+		// enqueue sets that now have one key.
+		H[hs.h0].xormask ^= hash
+		H[hs.h0].count--
+		if H[hs.h0].count == 1 {
+			Q[Qsize].index = hs.h0
+			Q[Qsize].hash = H[hs.h0].xormask
+			Qsize++
+		}
+		H[hs.h1].xormask ^= hash
+		H[hs.h1].count--
+		if H[hs.h1].count == 1 {
+			Q[Qsize].index = hs.h1
+			Q[Qsize].hash = H[hs.h1].xormask
+			Qsize++
+		}
+		H[hs.h2].xormask ^= hash
+		H[hs.h2].count--
+		if H[hs.h2].count == 1 {
+			Q[Qsize].index = hs.h2
+			Q[Qsize].hash = H[hs.h2].xormask
+			Qsize++
+		}
+	}
+
+	// if stacksize == size {
+	// 	// Success
+	// 	break
+	// }
+
+	// for i := range H {
+	// 	H[i] = xorset{0, 0}
+	// }
+	// filter.Seed = splitmix64(&rngcounter)
+	// }
 
 	// ref: Algorithm 4
-	stacksize := size
-	for stacksize > 0 {
-		stacksize--
-		ki := stack[stacksize]
-		hs := filter.geth012(ki.hash)
-		fp := uint8(fingerprint(ki.hash))
-		switch ki.index {
-		case hs.h0:
-			fp ^= filter.Fingerprints[hs.h1] ^ filter.Fingerprints[hs.h2]
-		case hs.h1:
-			fp ^= filter.Fingerprints[hs.h0] ^ filter.Fingerprints[hs.h2]
-		default:
-			fp ^= filter.Fingerprints[hs.h0] ^ filter.Fingerprints[hs.h1]
-		}
-		filter.Fingerprints[ki.index] = fp
-	}
+	// stacksize := size
+	if stacksize == size {
 
-	return filter, nil
+		for stacksize > 0 {
+			stacksize--
+			ki := stack[stacksize]
+			hs := filter.geth012(ki.hash)
+			fp := uint8(fingerprint(ki.hash))
+			switch ki.index {
+			case hs.h0:
+				fp ^= filter.Fingerprints[hs.h1] ^ filter.Fingerprints[hs.h2]
+			case hs.h1:
+				fp ^= filter.Fingerprints[hs.h0] ^ filter.Fingerprints[hs.h2]
+			default:
+				fp ^= filter.Fingerprints[hs.h0] ^ filter.Fingerprints[hs.h1]
+			}
+			filter.Fingerprints[ki.index] = fp
+		}
+		return filter, nil
+	}
+	return nil, errors.New("you probably have duplicate keys")
 }
