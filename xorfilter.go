@@ -267,7 +267,6 @@ func Populate(keys []uint64) (*Xor8, error) {
 			// success
 			break
 		}
-
 		for i := range sets0 {
 			sets0[i] = xorset{0, 0}
 		}

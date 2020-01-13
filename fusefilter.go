@@ -79,10 +79,10 @@ func (filter *Fuse8) geth012(hash uint64) h012 {
 // surely an indication that you have duplicate keys.
 func PopulateFuse8(keys []uint64) (*Fuse8, error) {
 	const FUSE_OVERHEAD = 1.0 / 0.879
-
+	const FUSE_CONSTANT = 1024 // todo: determine value
 	// ref: Algorithm 3
 	size := len(keys)
-	capacity := uint32(FUSE_OVERHEAD * float64(size))
+	capacity := uint32(FUSE_OVERHEAD*float64(size) + FUSE_CONSTANT)
 	capacity = capacity / SLOTS * SLOTS
 	rngcounter := uint64(1)
 
@@ -167,7 +167,6 @@ func PopulateFuse8(keys []uint64) (*Fuse8, error) {
 			// Success
 			break
 		}
-
 		for i := range H {
 			H[i] = xorset{0, 0}
 		}
