@@ -36,17 +36,15 @@ func TestBasic(t *testing.T) {
 	fpp := float64(matches) * 100.0 / float64(falsesize)
 	fmt.Println("false positive rate ", fpp)
 	assert.Equal(t, true, fpp < 0.40)
-}
-
-func Test_DuplicateKeys(t *testing.T) {
-	keys := []uint64{1, 77, 31, 241, 303, 303}
-
-	expectedErr := "you probably have duplicate keys"
-
-	_, err := Populate(keys)
-
-	if err.Error() != expectedErr {
-		t.Fatalf("Unexpected error: %v, Expected: %v", err, expectedErr)
+	keys = keys[:1000]
+	for trial := 0; trial < 10; trial++ {
+		for i := range keys {
+			keys[i] = splitmix64(&rng)
+		}
+		filter, _ = Populate(keys)
+		for _, v := range keys {
+			assert.Equal(t, true, filter.Contains(v))
+		}
 	}
 }
 
@@ -63,6 +61,16 @@ func BenchmarkPopulate100000(b *testing.B) {
 		}
 		b.StartTimer()
 		Populate(keys)
+	}
+}
+
+// credit: el10savio
+func Test_DuplicateKeys(t *testing.T) {
+	keys := []uint64{1, 77, 31, 241, 303, 303}
+	expectedErr := "too many iterations, you probably have duplicate keys"
+	_, err := Populate(keys)
+	if err.Error() != expectedErr {
+		t.Fatalf("Unexpected error: %v, Expected: %v", err, expectedErr)
 	}
 }
 

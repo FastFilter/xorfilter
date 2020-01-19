@@ -1,0 +1,23 @@
+Fuse8 filter:
+bits per entry  9.109008
+false positive rate  0.3931
+Xor8 filter:
+bits per entry  9.864
+false positive rate  0.3909
+goos: darwin
+goarch: amd64
+pkg: github.com/FastFilter/xorfilter
+BenchmarkFuse8Populate1000000-16        	      13	  87943729 ns/op
+BenchmarkFuse8Contains1000000-16        	112789416	        11.4 ns/op
+Fuse setup
+Fuse setup ok
+BenchmarkFuse8Contains50000000-16       	16659013	        78.2 ns/op
+BenchmarkPopulateTwoSegment100000-16    	    3049	    400146 ns/op	  603440 B/op	       7 allocs/op
+BenchmarkContainsTwoSegment100000-16    	183253515	         6.38 ns/op	       0 B/op	       0 allocs/op
+BenchmarkPopulate100000-16              	    3375	    360135 ns/op	  619824 B/op	       9 allocs/op
+BenchmarkContains100000-16              	190040096	         6.34 ns/op	       0 B/op	       0 allocs/op
+Xor8 setup
+Xor8 setup ok
+BenchmarkXor8bigContains50000000-16     	15671275	        77.7 ns/op
+PASS
+ok  	github.com/FastFilter/xorfilter	37.136s
