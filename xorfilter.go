@@ -5,30 +5,6 @@ import (
 	"math"
 )
 
-// Xor8 offers a 0.3% false-positive probability
-type Xor8 struct {
-	Seed         uint64
-	BlockLength  uint32
-	Fingerprints []uint8
-}
-
-type xorset struct {
-	xormask uint64
-	count   uint32
-}
-
-type hashes struct {
-	h  uint64
-	h0 uint32
-	h1 uint32
-	h2 uint32
-}
-
-type keyindex struct {
-	hash  uint64
-	index uint32
-}
-
 func murmur64(h uint64) uint64 {
 	h ^= h >> 33
 	h *= 0xff51afd7ed558ccd
@@ -74,8 +50,7 @@ func (filter *Xor8) Contains(key uint64) bool {
 	h0 := reduce(r0, filter.BlockLength)
 	h1 := reduce(r1, filter.BlockLength) + filter.BlockLength
 	h2 := reduce(r2, filter.BlockLength) + 2*filter.BlockLength
-	return f == (filter.Fingerprints[h0] ^ filter.Fingerprints[h1] ^
-		filter.Fingerprints[h2])
+	return f == (filter.Fingerprints[h0] ^ filter.Fingerprints[h1] ^ filter.Fingerprints[h2])
 }
 
 func (filter *Xor8) geth0h1h2(k uint64) hashes {
@@ -107,6 +82,30 @@ func (filter *Xor8) geth2(hash uint64) uint32 {
 	return reduce(r2, filter.BlockLength)
 }
 
+// scan for values with a count of one
+func scanCount(Qi []keyindex, setsi []xorset) ([]keyindex, int) {
+	QiSize := 0
+
+	// len(setsi) = filter.BlockLength
+	for i := uint32(0); i < uint32(len(setsi)); i++ {
+		if setsi[i].count == 1 {
+			Qi[QiSize].index = i
+			Qi[QiSize].hash = setsi[i].xormask
+			QiSize++
+		}
+	}
+
+	return Qi, QiSize
+}
+
+// fill setsi to xorset{0, 0}
+func resetSets(setsi []xorset) []xorset {
+	for i := range setsi {
+		setsi[i] = xorset{0, 0}
+	}
+	return setsi
+}
+
 // The maximum  number of iterations allowed before the populate function returns an error
 var MaxIterations = 100
 
@@ -118,25 +117,30 @@ func Populate(keys []uint64) (*Xor8, error) {
 	size := len(keys)
 	capacity := 32 + uint32(math.Ceil(1.23*float64(size)))
 	capacity = capacity / 3 * 3 // round it down to a multiple of 3
+
 	filter := &Xor8{}
-	filter.BlockLength = capacity / 3
-	filter.Fingerprints = make([]uint8, capacity, capacity)
 	var rngcounter uint64 = 1
 	filter.Seed = splitmix64(&rngcounter)
+	filter.BlockLength = capacity / 3
 
-	Q0 := make([]keyindex, filter.BlockLength, filter.BlockLength)
-	Q1 := make([]keyindex, filter.BlockLength, filter.BlockLength)
-	Q2 := make([]keyindex, filter.BlockLength, filter.BlockLength)
-	stack := make([]keyindex, size, size)
-	sets0 := make([]xorset, filter.BlockLength, filter.BlockLength)
-	sets1 := make([]xorset, filter.BlockLength, filter.BlockLength)
-	sets2 := make([]xorset, filter.BlockLength, filter.BlockLength)
+	// slice capacity defaults to length
+	filter.Fingerprints = make([]uint8, capacity)
+
+	stack := make([]keyindex, size)
+	Q0 := make([]keyindex, filter.BlockLength)
+	Q1 := make([]keyindex, filter.BlockLength)
+	Q2 := make([]keyindex, filter.BlockLength)
+	sets0 := make([]xorset, filter.BlockLength)
+	sets1 := make([]xorset, filter.BlockLength)
+	sets2 := make([]xorset, filter.BlockLength)
 	iterations := 0
-	for true {
+
+	for {
 		iterations += 1
 		if iterations > MaxIterations {
 			return nil, errors.New("too many iterations, you probably have duplicate keys")
 		}
+
 		for i := 0; i < size; i++ {
 			key := keys[i]
 			hs := filter.geth0h1h2(key)
@@ -147,32 +151,12 @@ func Populate(keys []uint64) (*Xor8, error) {
 			sets2[hs.h2].xormask ^= hs.h
 			sets2[hs.h2].count++
 		}
-		// scan for values with a count of one
-		Q0size := 0
-		Q1size := 0
-		Q2size := 0
-		for i := uint32(0); i < filter.BlockLength; i++ {
-			if sets0[i].count == 1 {
-				Q0[Q0size].index = i
-				Q0[Q0size].hash = sets0[i].xormask
-				Q0size++
-			}
-		}
 
-		for i := uint32(0); i < filter.BlockLength; i++ {
-			if sets1[i].count == 1 {
-				Q1[Q1size].index = i
-				Q1[Q1size].hash = sets1[i].xormask
-				Q1size++
-			}
-		}
-		for i := uint32(0); i < filter.BlockLength; i++ {
-			if sets2[i].count == 1 {
-				Q2[Q2size].index = i
-				Q2[Q2size].hash = sets2[i].xormask
-				Q2size++
-			}
-		}
+		// scan for values with a count of one
+		Q0, Q0size := scanCount(Q0, sets0)
+		Q1, Q1size := scanCount(Q1, sets1)
+		Q2, Q2size := scanCount(Q2, sets2)
+
 		stacksize := 0
 		for Q0size+Q1size+Q2size > 0 {
 			for Q0size > 0 {
@@ -267,15 +251,11 @@ func Populate(keys []uint64) (*Xor8, error) {
 			// success
 			break
 		}
-		for i := range sets0 {
-			sets0[i] = xorset{0, 0}
-		}
-		for i := range sets1 {
-			sets1[i] = xorset{0, 0}
-		}
-		for i := range sets2 {
-			sets2[i] = xorset{0, 0}
-		}
+
+		sets0 = resetSets(sets0)
+		sets1 = resetSets(sets1)
+		sets2 = resetSets(sets2)
+
 		filter.Seed = splitmix64(&rngcounter)
 	}
 

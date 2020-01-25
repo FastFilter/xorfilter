@@ -13,7 +13,7 @@ var rng = uint64(time.Now().UnixNano())
 
 func TestBasic(t *testing.T) {
 	testsize := 10000
-	keys := make([]uint64, testsize, testsize)
+	keys := make([]uint64, testsize)
 	for i := range keys {
 		keys[i] = splitmix64(&rng)
 	}
@@ -50,7 +50,7 @@ func TestBasic(t *testing.T) {
 
 func BenchmarkPopulate100000(b *testing.B) {
 	testsize := 10000
-	keys := make([]uint64, testsize, testsize)
+	keys := make([]uint64, testsize)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -76,7 +76,7 @@ func Test_DuplicateKeys(t *testing.T) {
 
 func BenchmarkContains100000(b *testing.B) {
 	testsize := 10000
-	keys := make([]uint64, testsize, testsize)
+	keys := make([]uint64, testsize)
 	for i := range keys {
 		keys[i] = splitmix64(&rng)
 	}
@@ -93,7 +93,7 @@ var xor8big *Xor8
 
 func xor8bigInit() {
 	fmt.Println("Xor8 setup")
-	keys := make([]uint64, 50000000, 50000000)
+	keys := make([]uint64, 50000000)
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
