@@ -12,7 +12,7 @@ import (
 // Xor8 filter.
 //
 // For more information on the fuse graph data structure, see https://arxiv.org/abs/1907.04749.
-// This implementation is referenced from the C implemenation at https://github.com/FastFilter/xor_singleheader/pull/11.
+// This implementation is referenced from the C implementation at https://github.com/FastFilter/xor_singleheader/pull/11.
 type Fuse8 struct {
 	Seed          uint64
 	SegmentLength uint32
