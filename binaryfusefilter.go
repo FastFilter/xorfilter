@@ -59,16 +59,15 @@ func (filter *BinaryFuse8) initializeParameters(size uint32) {
 	filter.Fingerprints = make([]uint8, arrayLength)
 }
 
-
 func (filter *BinaryFuse8) getHashFromHash(hash uint64) (uint32, uint32, uint32) {
-  hi, _ := bits.Mul64(hash, uint64(filter.SegmentCountLength))
-  h0 := uint32(hi)
-  h1 := h0 + filter.SegmentLength
-  h2 := h1 + filter.SegmentLength
-  hh := hash
-  h1 ^= uint32(hh>>18) & filter.SegmentLengthMask
-  h2 ^= uint32(hh) & filter.SegmentLengthMask
-  return h0, h1, h2
+	hi, _ := bits.Mul64(hash, uint64(filter.SegmentCountLength))
+	h0 := uint32(hi)
+	h1 := h0 + filter.SegmentLength
+	h2 := h1 + filter.SegmentLength
+	hh := hash
+	h1 ^= uint32(hh>>18) & filter.SegmentLengthMask
+	h2 ^= uint32(hh) & filter.SegmentLengthMask
+	return h0, h1, h2
 }
 
 // Populate fills a BinaryFuse8 filter with provided keys.
@@ -132,8 +131,8 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 					reverseH[stacksize] = uint8(1)
 				}
 				if index == index3 {
-			    	reverseH[stacksize] = uint8(2)
-			    }				
+					reverseH[stacksize] = uint8(2)
+				}
 				stacksize++
 
 				H[index1].count -= 1
@@ -142,7 +141,6 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 					Qsize++
 				}
 				H[index1].xormask ^= hash
-
 
 				H[index2].count -= 1
 				if H[index2].count == 1 {
@@ -157,7 +155,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 					Qsize++
 				}
 				H[index3].xormask ^= hash
-				
+
 			}
 		}
 
@@ -197,13 +195,13 @@ func (filter *BinaryFuse8) Contains(key uint64) bool {
 	f := uint8(fingerprint(hash))
 	hi, _ := bits.Mul64(hash, uint64(filter.SegmentCountLength))
 	h0 := uint32(hi)
-    h1 := h0 + filter.SegmentLength
-    h2 := h1 + filter.SegmentLength
+	h1 := h0 + filter.SegmentLength
+	h2 := h1 + filter.SegmentLength
 	hh := hash
 	h1 ^= uint32(hh>>18) & filter.SegmentLengthMask
-    h2 ^= uint32(hh) & filter.SegmentLengthMask
-    f ^= filter.Fingerprints[h0] ^ filter.Fingerprints[h1] ^ filter.Fingerprints[h2]
-    return f == 0
+	h2 ^= uint32(hh) & filter.SegmentLengthMask
+	f ^= filter.Fingerprints[h0] ^ filter.Fingerprints[h1] ^ filter.Fingerprints[h2]
+	return f == 0
 }
 
 // Todo: delete
@@ -215,7 +213,6 @@ func populateBinaryFuse8Alt(keys []uint64) (*BinaryFuse8, error) {
 	filter.Seed = splitmix64(&rngcounter)
 
 	capacity := uint32(len(filter.Fingerprints))
-	
 
 	H := make([]xorset, capacity, capacity)
 	Q := make([]keyindex, capacity, capacity)
