@@ -12,8 +12,7 @@ import (
 var rng = uint64(time.Now().UnixNano())
 
 func TestBasic(t *testing.T) {
-	testsize := 10000000
-	keys := make([]uint64, testsize)
+	keys := make([]uint64, NUM_KEYS)
 	for i := range keys {
 		keys[i] = splitmix64(&rng)
 	}
@@ -23,7 +22,7 @@ func TestBasic(t *testing.T) {
 	}
 	falsesize := 10000000
 	matches := 0
-	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(testsize)
+	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(NUM_KEYS)
 	fmt.Println("Xor8 filter:")
 	fmt.Println("bits per entry ", bpv)
 	assert.Equal(t, true, bpv < 10.)

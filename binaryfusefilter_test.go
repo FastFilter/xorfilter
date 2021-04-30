@@ -10,7 +10,6 @@ import (
 
 
 func TestBinaryFuse8Basic(t *testing.T) {
-	testsize := 10000000
 	keys := make([]uint64, NUM_KEYS)
 	for i := range keys {
 		keys[i] = rand.Uint64()
@@ -21,7 +20,7 @@ func TestBinaryFuse8Basic(t *testing.T) {
 	}
 	falsesize := 10000000
 	matches := 0
-	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(testsize)
+	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(NUM_KEYS)
 	fmt.Println("Binary Fuse8 filter:")
 	fmt.Println("bits per entry ", bpv)
 	assert.Equal(t, true, bpv < 9.11)
@@ -78,6 +77,16 @@ func BenchmarkConstructBinaryFuse8(b *testing.B) {
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 	  PopulateBinaryFuse8(keys)
+	}
+}
+func BenchmarkConstructBinaryFuse8Alt(b *testing.B) {
+	keys := make([]uint64, CONSTRUCT_SIZE)
+	for i := range keys {
+		keys[i] = rand.Uint64()
+	}
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		populateBinaryFuse8Alt(keys)
 	}
 }
 
