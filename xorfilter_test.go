@@ -12,7 +12,7 @@ import (
 var rng = uint64(time.Now().UnixNano())
 
 func TestBasic(t *testing.T) {
-	testsize := 10000
+	testsize := 10000000
 	keys := make([]uint64, testsize)
 	for i := range keys {
 		keys[i] = splitmix64(&rng)
@@ -21,7 +21,7 @@ func TestBasic(t *testing.T) {
 	for _, v := range keys {
 		assert.Equal(t, true, filter.Contains(v))
 	}
-	falsesize := 1000000
+	falsesize := 10000000
 	matches := 0
 	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(testsize)
 	fmt.Println("Xor8 filter:")
@@ -88,6 +88,17 @@ func BenchmarkContains100000(b *testing.B) {
 		filter.Contains(keys[n%len(keys)])
 	}
 }
+const CONSTRUCT_SIZE = 10000000
+func BenchmarkConstructXor8(b *testing.B) {
+	keys := make([]uint64, CONSTRUCT_SIZE)
+	for i := range keys {
+		keys[i] = rand.Uint64()
+	}
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+	  Populate(keys)
+	}
+}
 
 var xor8big *Xor8
 
@@ -100,6 +111,7 @@ func xor8bigInit() {
 	xor8big, _ = Populate(keys)
 	fmt.Println("Xor8 setup ok")
 }
+
 
 func BenchmarkXor8bigContains50000000(b *testing.B) {
 	if xor8big == nil {

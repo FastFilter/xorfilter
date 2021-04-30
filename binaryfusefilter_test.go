@@ -8,22 +8,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const NUM_KEYS = 1e6
 
-func TestFuse8Basic(t *testing.T) {
+func TestBinaryFuse8Basic(t *testing.T) {
 	testsize := 10000000
 	keys := make([]uint64, NUM_KEYS)
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-	filter, _ := PopulateFuse8(keys)
+	filter, _ := PopulateBinaryFuse8(keys)
 	for _, v := range keys {
 		assert.Equal(t, true, filter.Contains(v))
 	}
 	falsesize := 10000000
 	matches := 0
 	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(testsize)
-	fmt.Println("Fuse8 filter:")
+	fmt.Println("Binary Fuse8 filter:")
 	fmt.Println("bits per entry ", bpv)
 	assert.Equal(t, true, bpv < 9.11)
 	for i := 0; i < falsesize; i++ {
@@ -34,14 +33,13 @@ func TestFuse8Basic(t *testing.T) {
 	}
 	fpp := float64(matches) * 100.0 / float64(falsesize)
 	fmt.Println("false positive rate ", fpp)
-	assert.Equal(t, true, fpp < 0.40)
 	keys = keys[:1000]
 	for trial := 0; trial < 10; trial++ {
 		rand.Seed(int64(trial))
 		for i := range keys {
 			keys[i] = rand.Uint64()
 		}
-		filter, _ = PopulateFuse8(keys)
+		filter, _ = PopulateBinaryFuse8(keys)
 		for _, v := range keys {
 			assert.Equal(t, true, filter.Contains(v))
 		}
@@ -49,44 +47,46 @@ func TestFuse8Basic(t *testing.T) {
 	}
 }
 
-func BenchmarkConstructFuse8(b *testing.B) {
+func BenchmarkBinaryFuse8Populate1000000(b *testing.B) {
+	keys := make([]uint64, NUM_KEYS, NUM_KEYS)
+	for i := range keys {
+		keys[i] = rand.Uint64()
+	}
+
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		PopulateBinaryFuse8(keys)
+	}
+}
+
+func Test_DuplicateKeysBinaryFuse(t *testing.T) {
+	keys := []uint64{1, 77, 31, 241, 303, 303}
+	expectedErr := "too many iterations, you probably have duplicate keys"
+	_, err := PopulateBinaryFuse8(keys)
+	if err.Error() != expectedErr {
+		t.Fatalf("Unexpected error: %v, Expected: %v", err, expectedErr)
+	}
+}
+
+var bogusbinary *BinaryFuse8
+
+func BenchmarkConstructBinaryFuse8(b *testing.B) {
 	keys := make([]uint64, CONSTRUCT_SIZE)
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-	  PopulateFuse8(keys)
+	  PopulateBinaryFuse8(keys)
 	}
 }
 
-func BenchmarkFuse8Populate10000000(b *testing.B) {
+func BenchmarkBinaryFuse8Contains1000000(b *testing.B) {
 	keys := make([]uint64, NUM_KEYS, NUM_KEYS)
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		PopulateFuse8(keys)
-	}
-}
-
-func Test_DuplicateKeysFuse(t *testing.T) {
-	keys := []uint64{1, 77, 31, 241, 303, 303}
-	expectedErr := "too many iterations, you probably have duplicate keys"
-	_, err := PopulateFuse8(keys)
-	if err.Error() != expectedErr {
-		t.Fatalf("Unexpected error: %v, Expected: %v", err, expectedErr)
-	}
-}
-
-func BenchmarkFuse8Contains1000000(b *testing.B) {
-	keys := make([]uint64, NUM_KEYS, NUM_KEYS)
-	for i := range keys {
-		keys[i] = rand.Uint64()
-	}
-	filter, _ := PopulateFuse8(keys)
+	filter, _ := PopulateBinaryFuse8(keys)
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -94,24 +94,24 @@ func BenchmarkFuse8Contains1000000(b *testing.B) {
 	}
 }
 
-var fusedbig *Fuse8
+var binaryfusedbig *BinaryFuse8
 
-func fusedbigInit() {
-	fmt.Println("Fuse setup")
+func binaryfusedbigInit() {
+	fmt.Println("Binary Fuse setup")
 	keys := make([]uint64, 50000000, 50000000)
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-	fusedbig, _ = PopulateFuse8(keys)
-	fmt.Println("Fuse setup ok")
+	binaryfusedbig, _ = PopulateBinaryFuse8(keys)
+	fmt.Println("Binary Fuse setup ok")
 }
 
-func BenchmarkFuse8Contains50000000(b *testing.B) {
-	if fusedbig == nil {
-		fusedbigInit()
+func BenchmarkBinaryFuse8Contains50000000(b *testing.B) {
+	if binaryfusedbig == nil {
+		binaryfusedbigInit()
 	}
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		fusedbig.Contains(rand.Uint64())
+		binaryfusedbig.Contains(rand.Uint64())
 	}
 }
