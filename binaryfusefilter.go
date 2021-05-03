@@ -193,13 +193,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 func (filter *BinaryFuse8) Contains(key uint64) bool {
 	hash := mixsplit(key, filter.Seed)
 	f := uint8(fingerprint(hash))
-	hi, _ := bits.Mul64(hash, uint64(filter.SegmentCountLength))
-	h0 := uint32(hi)
-	h1 := h0 + filter.SegmentLength
-	h2 := h1 + filter.SegmentLength
-	hh := hash
-	h1 ^= uint32(hh>>18) & filter.SegmentLengthMask
-	h2 ^= uint32(hh) & filter.SegmentLengthMask
+	h0, h1, h2 := filter.getHashFromHash(hash)
 	f ^= filter.Fingerprints[h0] ^ filter.Fingerprints[h1] ^ filter.Fingerprints[h2]
 	return f == 0
 }
