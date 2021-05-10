@@ -71,6 +71,17 @@ func Test_DuplicateKeysBinaryFuse(t *testing.T) {
 
 var bogusbinary *BinaryFuse8
 
+func BenchmarkConstructNaiveBinaryFuse8(b *testing.B) {
+	keys := make([]uint64, CONSTRUCT_SIZE)
+	for i := range keys {
+		keys[i] = rand.Uint64()
+	}
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		NaivePopulateBinaryFuse8(keys)
+	}
+}
+
 func BenchmarkConstructBinaryFuse8(b *testing.B) {
 	keys := make([]uint64, CONSTRUCT_SIZE)
 	for i := range keys {
@@ -81,6 +92,7 @@ func BenchmarkConstructBinaryFuse8(b *testing.B) {
 		PopulateBinaryFuse8(keys)
 	}
 }
+
 
 func BenchmarkBinaryFuse8Contains1000000(b *testing.B) {
 	keys := make([]uint64, NUM_KEYS, NUM_KEYS)
@@ -94,6 +106,7 @@ func BenchmarkBinaryFuse8Contains1000000(b *testing.B) {
 		filter.Contains(keys[n%len(keys)])
 	}
 }
+
 
 var binaryfusedbig *BinaryFuse8
 
