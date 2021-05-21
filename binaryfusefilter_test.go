@@ -94,6 +94,18 @@ func BenchmarkConstructBinaryFuse8Alternative(b *testing.B) {
 }
 
 
+func BenchmarkConstructBinaryFuse8LowMem(b *testing.B) {
+	keys := make([]uint64, CONSTRUCT_SIZE)
+	for i := range keys {
+		keys[i] = rand.Uint64()
+	}
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		LowMemPopulateBinaryFuse8(keys)
+	}
+}
+
+
 func BenchmarkConstructBinaryFuse8(b *testing.B) {
 	keys := make([]uint64, CONSTRUCT_SIZE)
 	for i := range keys {

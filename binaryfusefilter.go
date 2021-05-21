@@ -505,6 +505,155 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	return filter, nil
 }
 
+
+// PopulateBinaryFuse8 fills a BinaryFuse8 filter with provided keys.
+// The caller is responsible for ensuring there are no duplicate keys provided.
+// The function may return an error after too many iterations: it is almost
+// surely an indication that you have duplicate keys.
+func LowMemPopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
+	size := uint32(len(keys))
+	filter := &BinaryFuse8{}
+	filter.initializeParameters(size)
+	rngcounter := uint64(1)
+	filter.Seed = splitmix64(&rngcounter)
+	capacity := uint32(len(filter.Fingerprints))
+
+	alone := make([]uint32, capacity)
+    // the lowest 2 bits are the h index (0, 1, or 2)
+    // so we only have 6 bits for counting;
+    // but that's sufficient
+	t2count := make([]uint8, capacity)
+	t2hash := make([]uint64, capacity)
+	reverseOrder := make([]uint64, size+1)
+	reverseOrder[size] = 1
+	reverseH := make([]uint8, size)
+
+    // the array h0, h1, h2, h0, h1, h2
+	// hi012 := [6]uint{0, 1, 2, 0, 1, 2}
+
+	iterations := 0
+	for true {
+		iterations += 1
+		if iterations > MaxIterations {
+			return nil, errors.New("too many iterations, you probably have duplicate keys")
+		}
+
+		blockBits := 1
+		for (1<<blockBits) < filter.SegmentCount {
+			blockBits += 1
+		}
+		startPos := make([]uint, 1 << blockBits)
+		for i, _ := range startPos {
+			startPos[i] = (uint(i) * uint(size)) >> blockBits
+		}
+		for _, key := range keys {
+			hash := mixsplit(key, filter.Seed)
+			segment_index := hash >> (64 - blockBits)
+			for reverseOrder[startPos[segment_index]] != 0 {
+				segment_index++
+				segment_index &= (1 << blockBits) - 1
+			}
+			reverseOrder[startPos[segment_index]] = hash
+            startPos[segment_index] += 1
+		}
+		for i := uint32(0); i < size; i++ {
+			hash := reverseOrder[i];
+			index1, index2, index3 := filter.getHashFromHash(hash)
+			t2count[index1] += 4
+			// t2count[index1] ^= 0
+			t2hash[index1] ^= hash
+			t2count[index2] += 4
+			t2count[index2] ^= 1
+			t2hash[index2] ^= hash
+			t2count[index3] += 4
+			t2count[index3] ^= 2
+			t2hash[index3] ^= hash
+			if t2count[index1] < 4 || t2count[index2] < 4 || t2count[index3] < 4 {
+				break
+			}
+		}
+	  
+		// End of key addition
+
+		Qsize := 0
+		// Add sets with one key to the queue.
+		for i := uint32(0); i < capacity; i++ {
+			alone[Qsize] = i
+			if (t2count[i] >> 2) == 1 {
+				Qsize++
+			}
+		}
+		stacksize := uint32(0)
+		for Qsize > 0 {
+			Qsize--
+			index := alone[Qsize]
+			if (t2count[index] >> 2) == 1 {
+				hash := t2hash[index]
+				found := t2count[index] & 3
+				reverseH[stacksize] = found
+				reverseOrder[stacksize] = hash
+				stacksize++
+
+				index1, index2, index3 := filter.getHashFromHash(hash)
+
+				t2count[index1] -= 4
+				alone[Qsize] = index1
+				if (t2count[index1] >> 2) == 1 {
+					Qsize++
+				}
+				t2hash[index1] ^= hash
+
+				t2count[index2] -= 4
+				alone[Qsize] = index2
+				if (t2count[index2] >> 2) == 1 {
+					Qsize++
+				}
+				t2hash[index2] ^= hash
+				
+				t2count[index3] -= 4
+				alone[Qsize] = index3
+				if (t2count[index3] >> 2) == 1  {
+					Qsize++
+				}
+				t2hash[index3] ^= hash
+			}
+		}
+
+		if stacksize == size {
+			// Success
+			break
+		}
+		for i:=uint32(0) ; i < size; i++ {
+			reverseOrder[i] = 0
+		}
+		for i:=uint32(0) ; i < capacity; i++ {
+			t2count[i] = 0
+			t2hash[i] = 0
+		}
+		filter.Seed = splitmix64(&rngcounter)
+	}
+
+	for i := int(size - 1); i >= 0; i-- {
+		// the hash of the key we insert next
+		hash := reverseOrder[i]
+		// we set table[change] to the fingerprint of the key,
+		// unless the other two entries are already occupied
+		xor2 := uint8(fingerprint(hash))
+		index1, index2, index3 := filter.getHashFromHash(hash)
+		switch reverseH[i] {
+		case 0:
+			filter.Fingerprints[index1] = xor2 ^ filter.Fingerprints[index2] ^ filter.Fingerprints[index3]
+		case 1:
+			filter.Fingerprints[index2] = xor2 ^ filter.Fingerprints[index1] ^ filter.Fingerprints[index3]
+		default:
+			filter.Fingerprints[index3] = xor2 ^ filter.Fingerprints[index1] ^ filter.Fingerprints[index2]
+		}
+	}
+
+	return filter, nil
+}
+
+
 // Contains returns `true` if key is part of the set with a false positive probability of <0.4%.
 func (filter *BinaryFuse8) Contains(key uint64) bool {
 	hash := mixsplit(key, filter.Seed)
