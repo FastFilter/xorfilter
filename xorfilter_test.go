@@ -53,7 +53,6 @@ func TestBasic(t *testing.T) {
 func BenchmarkPopulate100000(b *testing.B) {
 	testsize := 10000
 	keys := make([]uint64, testsize)
-
 	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -93,14 +92,24 @@ func BenchmarkContains100000(b *testing.B) {
 
 const CONSTRUCT_SIZE = 10000000
 
-func BenchmarkConstructXor8(b *testing.B) {
-	keys := make([]uint64, CONSTRUCT_SIZE)
-	for i := range keys {
-		keys[i] = rand.Uint64()
+var bigrandomarray []uint64
+
+func bigrandomarrayInit() {
+	if bigrandomarray == nil {
+		fmt.Println("bigrandomarray setup with CONSTRUCT_SIZE = ", CONSTRUCT_SIZE)
+		bigrandomarray = make([]uint64, CONSTRUCT_SIZE)
+		for i := range bigrandomarray {
+			bigrandomarray[i] = rand.Uint64()
+		}
 	}
+}
+
+func BenchmarkConstructXor8(b *testing.B) {
+	bigrandomarrayInit()
 	b.ResetTimer()
+	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
-		Populate(keys)
+		Populate(bigrandomarray)
 	}
 }
 

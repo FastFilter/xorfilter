@@ -74,7 +74,7 @@ func (filter *BinaryFuse8) getHashFromHash(hash uint64) (uint32, uint32, uint32)
 // The caller is responsible for ensuring there are no duplicate keys provided.
 // The function may return an error after too many iterations: it is almost
 // surely an indication that you have duplicate keys.
-// 
+//
 // You should prefer PopulateBinaryFuse8
 //
 func NaivePopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
@@ -192,7 +192,6 @@ func NaivePopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	return filter, nil
 }
 
-
 // PopulateBinaryFuse8Alternative fills a BinaryFuse8 filter with provided keys.
 // The caller is responsible for ensuring there are no duplicate keys provided.
 // The function may return an error after too many iterations: it is almost
@@ -221,31 +220,31 @@ func PopulateBinaryFuse8Alternative(keys []uint64) (*BinaryFuse8, error) {
 
 		// Add all keys to the construction array.
 		/*
-		// We could do it as follows but it would be slower.
-		for _, key := range keys {
-			hash := mixsplit(key, filter.Seed)
-			index1, index2, index3 := filter.getHashFromHash(hash)
-			H[index1].count++
-			H[index1].xormask ^= hash
-			H[index2].count++
-			H[index2].xormask ^= hash
-			H[index3].count++
-			H[index3].xormask ^= hash
-		}
-		// End of key addition.
+			// We could do it as follows but it would be slower.
+			for _, key := range keys {
+				hash := mixsplit(key, filter.Seed)
+				index1, index2, index3 := filter.getHashFromHash(hash)
+				H[index1].count++
+				H[index1].xormask ^= hash
+				H[index2].count++
+				H[index2].xormask ^= hash
+				H[index3].count++
+				H[index3].xormask ^= hash
+			}
+			// End of key addition.
 		*/
 		blockBits := 1
-		for (1<<blockBits) < filter.SegmentCount {
+		for (1 << blockBits) < filter.SegmentCount {
 			blockBits += 1
 		}
-		startPos := make([]int, 1 << blockBits)
+		startPos := make([]int, 1<<blockBits)
 		for i, key := range keys {
 			hash := mixsplit(key, filter.Seed)
 			hashes[i] = hash
-			startPos[hash >> (64 - blockBits)] += 1
+			startPos[hash>>(64-blockBits)] += 1
 		}
-		for i:= 1; i < len(startPos); i++ {
-			startPos[i] += startPos[i - 1]
+		for i := 1; i < len(startPos); i++ {
+			startPos[i] += startPos[i-1]
 		}
 		for _, hash := range hashes {
 			idx := hash >> (64 - blockBits)
@@ -347,12 +346,11 @@ func PopulateBinaryFuse8Alternative(keys []uint64) (*BinaryFuse8, error) {
 	return filter, nil
 }
 
-
 // PopulateBinaryFuse8 fills a BinaryFuse8 filter with provided keys.
 // The caller is responsible for ensuring there are no duplicate keys provided.
 // The function may return an error after too many iterations: it is almost
 // surely an indication that you have duplicate keys.
-func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
+func PopulateBinaryFuse8Previous(keys []uint64) (*BinaryFuse8, error) {
 	size := uint32(len(keys))
 	filter := &BinaryFuse8{}
 	filter.initializeParameters(size)
@@ -376,24 +374,24 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 
 		// Add all keys to the construction array.
 		/*
-		// We could do it as follows but it would be slower.
-		for _, key := range keys {
-			hash := mixsplit(key, filter.Seed)
-			index1, index2, index3 := filter.getHashFromHash(hash)
-			H[index1].count++
-			H[index1].xormask ^= hash
-			H[index2].count++
-			H[index2].xormask ^= hash
-			H[index3].count++
-			H[index3].xormask ^= hash
-		}
-		// End of key addition.
+			// We could do it as follows but it would be slower.
+			for _, key := range keys {
+				hash := mixsplit(key, filter.Seed)
+				index1, index2, index3 := filter.getHashFromHash(hash)
+				H[index1].count++
+				H[index1].xormask ^= hash
+				H[index2].count++
+				H[index2].xormask ^= hash
+				H[index3].count++
+				H[index3].xormask ^= hash
+			}
+			// End of key addition.
 		*/
 		blockBits := 1
-		for (1<<blockBits) < filter.SegmentCount {
+		for (1 << blockBits) < filter.SegmentCount {
 			blockBits += 1
 		}
-		startPos := make([]uint, 1 << blockBits)
+		startPos := make([]uint, 1<<blockBits)
 		for i, _ := range startPos {
 			startPos[i] = (uint(i) * uint(size)) >> blockBits
 		}
@@ -405,7 +403,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 				segment_index &= (1 << blockBits) - 1
 			}
 			reverseOrder[startPos[segment_index]] = hash
-            startPos[segment_index] += 1
+			startPos[segment_index] += 1
 		}
 		for i := uint32(0); i < size; i++ {
 			hash := reverseOrder[i]
@@ -476,7 +474,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 			// Success
 			break
 		}
-		for i:=uint32(0) ; i < size; i++ {
+		for i := uint32(0); i < size; i++ {
 			reverseOrder[i] = 0
 		}
 		for i := range H {
@@ -505,12 +503,18 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	return filter, nil
 }
 
+func mod3(x uint8) uint8 {
+	if x > 2 {
+		x -= 3
+	}
+	return x
+}
 
 // PopulateBinaryFuse8 fills a BinaryFuse8 filter with provided keys.
 // The caller is responsible for ensuring there are no duplicate keys provided.
 // The function may return an error after too many iterations: it is almost
 // surely an indication that you have duplicate keys.
-func LowMemPopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
+func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	size := uint32(len(keys))
 	filter := &BinaryFuse8{}
 	filter.initializeParameters(size)
@@ -519,17 +523,20 @@ func LowMemPopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	capacity := uint32(len(filter.Fingerprints))
 
 	alone := make([]uint32, capacity)
-    // the lowest 2 bits are the h index (0, 1, or 2)
-    // so we only have 6 bits for counting;
-    // but that's sufficient
+	// the lowest 2 bits are the h index (0, 1, or 2)
+	// so we only have 6 bits for counting;
+	// but that's sufficient
 	t2count := make([]uint8, capacity)
+	reverseH := make([]uint8, size)
+
 	t2hash := make([]uint64, capacity)
 	reverseOrder := make([]uint64, size+1)
 	reverseOrder[size] = 1
-	reverseH := make([]uint8, size)
 
-    // the array h0, h1, h2, h0, h1, h2
-	// hi012 := [6]uint{0, 1, 2, 0, 1, 2}
+	// the array h0, h1, h2, h0, h1, h2
+	var h012 [6]uint32
+	// this could be used to compute the mod3
+	// tabmod3 := [5]uint8{0,1,2,0,1}
 
 	iterations := 0
 	for true {
@@ -539,10 +546,10 @@ func LowMemPopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 		}
 
 		blockBits := 1
-		for (1<<blockBits) < filter.SegmentCount {
+		for (1 << blockBits) < filter.SegmentCount {
 			blockBits += 1
 		}
-		startPos := make([]uint, 1 << blockBits)
+		startPos := make([]uint, 1<<blockBits)
 		for i, _ := range startPos {
 			startPos[i] = (uint(i) * uint(size)) >> blockBits
 		}
@@ -554,13 +561,13 @@ func LowMemPopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 				segment_index &= (1 << blockBits) - 1
 			}
 			reverseOrder[startPos[segment_index]] = hash
-            startPos[segment_index] += 1
+			startPos[segment_index] += 1
 		}
 		for i := uint32(0); i < size; i++ {
-			hash := reverseOrder[i];
+			hash := reverseOrder[i]
 			index1, index2, index3 := filter.getHashFromHash(hash)
 			t2count[index1] += 4
-			// t2count[index1] ^= 0
+			// t2count[index1] ^= 0 // noop
 			t2hash[index1] ^= hash
 			t2count[index2] += 4
 			t2count[index2] ^= 1
@@ -572,7 +579,7 @@ func LowMemPopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 				break
 			}
 		}
-	  
+
 		// End of key addition
 
 		Qsize := 0
@@ -596,26 +603,28 @@ func LowMemPopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 
 				index1, index2, index3 := filter.getHashFromHash(hash)
 
-				t2count[index1] -= 4
-				alone[Qsize] = index1
-				if (t2count[index1] >> 2) == 1 {
-					Qsize++
-				}
-				t2hash[index1] ^= hash
+				h012[1] = index2
+				h012[2] = index3
+				h012[3] = index1
+				h012[4] = h012[1]
 
-				t2count[index2] -= 4
-				alone[Qsize] = index2
-				if (t2count[index2] >> 2) == 1 {
+				other_index1 := h012[found+1]
+				alone[Qsize] = other_index1
+				if (t2count[other_index1] >> 2) == 2 {
 					Qsize++
 				}
-				t2hash[index2] ^= hash
-				
-				t2count[index3] -= 4
-				alone[Qsize] = index3
-				if (t2count[index3] >> 2) == 1  {
+				t2count[other_index1] -= 4
+				t2count[other_index1] ^= mod3(found + 1) // could use this instead: tabmod3[found+1]
+				t2hash[other_index1] ^= hash
+
+				other_index2 := h012[found+2]
+				alone[Qsize] = other_index2
+				if (t2count[other_index2] >> 2) == 2 {
 					Qsize++
 				}
-				t2hash[index3] ^= hash
+				t2count[other_index2] -= 4
+				t2count[other_index2] ^= mod3(found + 2) // could use this instead: tabmod3[found+2]
+				t2hash[other_index2] ^= hash
 			}
 		}
 
@@ -623,10 +632,10 @@ func LowMemPopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 			// Success
 			break
 		}
-		for i:=uint32(0) ; i < size; i++ {
+		for i := uint32(0); i < size; i++ {
 			reverseOrder[i] = 0
 		}
-		for i:=uint32(0) ; i < capacity; i++ {
+		for i := uint32(0); i < capacity; i++ {
 			t2count[i] = 0
 			t2hash[i] = 0
 		}
@@ -636,23 +645,19 @@ func LowMemPopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	for i := int(size - 1); i >= 0; i-- {
 		// the hash of the key we insert next
 		hash := reverseOrder[i]
-		// we set table[change] to the fingerprint of the key,
-		// unless the other two entries are already occupied
 		xor2 := uint8(fingerprint(hash))
 		index1, index2, index3 := filter.getHashFromHash(hash)
-		switch reverseH[i] {
-		case 0:
-			filter.Fingerprints[index1] = xor2 ^ filter.Fingerprints[index2] ^ filter.Fingerprints[index3]
-		case 1:
-			filter.Fingerprints[index2] = xor2 ^ filter.Fingerprints[index1] ^ filter.Fingerprints[index3]
-		default:
-			filter.Fingerprints[index3] = xor2 ^ filter.Fingerprints[index1] ^ filter.Fingerprints[index2]
-		}
+		found := reverseH[i]
+		h012[0] = index1
+		h012[1] = index2
+		h012[2] = index3
+		h012[3] = h012[0]
+		h012[4] = h012[1]
+		filter.Fingerprints[h012[found]] = xor2 ^ filter.Fingerprints[h012[found+1]] ^ filter.Fingerprints[h012[found+2]]
 	}
 
 	return filter, nil
 }
-
 
 // Contains returns `true` if key is part of the set with a false positive probability of <0.4%.
 func (filter *BinaryFuse8) Contains(key uint64) bool {
