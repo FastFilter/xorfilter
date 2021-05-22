@@ -52,13 +52,11 @@ func TestFuse8Basic(t *testing.T) {
 }
 
 func BenchmarkConstructFuse8(b *testing.B) {
-	keys := make([]uint64, CONSTRUCT_SIZE)
-	for i := range keys {
-		keys[i] = rand.Uint64()
-	}
+	bigrandomarrayInit()
 	b.ResetTimer()
+	b.ReportAllocs()	
 	for n := 0; n < b.N; n++ {
-		PopulateFuse8(keys)
+		PopulateFuse8(bigrandomarray)
 	}
 }
 
@@ -67,7 +65,6 @@ func BenchmarkFuse8Populate10000000(b *testing.B) {
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		PopulateFuse8(keys)
