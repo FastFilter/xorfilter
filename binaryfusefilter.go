@@ -64,9 +64,8 @@ func (filter *BinaryFuse8) getHashFromHash(hash uint64) (uint32, uint32, uint32)
 	h0 := uint32(hi)
 	h1 := h0 + filter.SegmentLength
 	h2 := h1 + filter.SegmentLength
-	hh := hash
-	h1 ^= uint32(hh>>18) & filter.SegmentLengthMask
-	h2 ^= uint32(hh) & filter.SegmentLengthMask
+	h1 ^= uint32(hash>>18) & filter.SegmentLengthMask
+	h2 ^= uint32(hash) & filter.SegmentLengthMask
 	return h0, h1, h2
 }
 
