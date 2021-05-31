@@ -71,33 +71,6 @@ func Test_DuplicateKeysBinaryFuse(t *testing.T) {
 
 var bogusbinary *BinaryFuse8
 
-func BenchmarkConstructNaiveBinaryFuse8(b *testing.B) {
-	bigrandomarrayInit()
-	b.ResetTimer()
-	b.ReportAllocs()	
-	for n := 0; n < b.N; n++ {
-		NaivePopulateBinaryFuse8(bigrandomarray)
-	}
-}
-
-func BenchmarkConstructBinaryFuse8Previous(b *testing.B) {
-	bigrandomarrayInit()
-	b.ResetTimer()
-	b.ReportAllocs()
-	for n := 0; n < b.N; n++ {
-		PopulateBinaryFuse8Previous(bigrandomarray)
-	}
-}
-
-func BenchmarkConstructBinaryFuse8Alternative(b *testing.B) {
-	bigrandomarrayInit()
-	b.ResetTimer()
-	b.ReportAllocs()	
-	for n := 0; n < b.N; n++ {
-		PopulateBinaryFuse8Alternative(bigrandomarray)
-	}
-}
-
 
 func BenchmarkConstructBinaryFuse8(b *testing.B) {
 	bigrandomarrayInit()
