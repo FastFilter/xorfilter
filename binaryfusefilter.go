@@ -118,7 +118,8 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 		}
 		startPos := make([]uint, 1<<blockBits)
 		for i, _ := range startPos {
-			startPos[i] = (uint(i) * uint(size)) >> blockBits
+			// important: we do not want i * size to overflow!!!
+			startPos[i] = uint((uint64(i) * uint64(size)) >> blockBits)
 		}
 		for _, key := range keys {
 			hash := mixsplit(key, filter.Seed)
