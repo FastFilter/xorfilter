@@ -17,10 +17,12 @@ type BinaryFuse8 struct {
 }
 
 func calculateSegmentLength(arity uint32, size uint32) uint32 {
+	// These parameters are very sensitive. Replacing 'floor' by 'round' can
+    // substantially affect the construction time. 
 	if arity == 3 {
-		return uint32(2) << int(math.Round(0.831*math.Log(float64(size))+0.75+0.5))
+		return uint32(2) << int(math.Floor(0.831*math.Log(float64(size))+0.75+0.5))
 	} else if arity == 4 {
-		return uint32(1) << int(math.Round(0.936*math.Log(float64(size))-1+0.5))
+		return uint32(1) << int(math.Floor(0.936*math.Log(float64(size))-1+0.5))
 	} else {
 		return 65536
 	}
@@ -104,7 +106,6 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	var h012 [6]uint32
 	// this could be used to compute the mod3
 	// tabmod3 := [5]uint8{0,1,2,0,1}
-
 	iterations := 0
 	for true {
 		iterations += 1
@@ -131,6 +132,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 			reverseOrder[startPos[segment_index]] = hash
 			startPos[segment_index] += 1
 		}
+		error := 0
 		for i := uint32(0); i < size; i++ {
 			hash := reverseOrder[i]
 			index1, index2, index3 := filter.getHashFromHash(hash)
@@ -143,9 +145,18 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 			t2count[index3] += 4
 			t2count[index3] ^= 2
 			t2hash[index3] ^= hash
-			if t2count[index1] < 4 || t2count[index2] < 4 || t2count[index3] < 4 {
-				break
+			if t2count[index1] < 4 {
+				error = 1
 			}
+			if t2count[index2] < 4 {
+				error = 1
+			}
+			if t2count[index3] < 4 {
+				error = 1
+			}
+		}
+		if error == 1 {
+			continue
 		}
 
 		// End of key addition
