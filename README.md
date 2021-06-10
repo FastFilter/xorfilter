@@ -1,12 +1,12 @@
-# xorfilter: Go library implementing xor filters
+# xorfilter: Go library implementing xor and binary fuse filters
 [![GoDoc](https://godoc.org/github.com/FastFilter/xorfilter?status.svg)](https://godoc.org/github.com/FastFilter/xorfilter)
 [![Build Status](https://cloud.drone.io/api/badges/FastFilter/xorfilter/status.svg)](https://cloud.drone.io/FastFilter/xorfilter)
 
 Bloom filters are used to quickly check whether an element is part of a set.
-Xor filters are a faster and more concise alternative to Bloom filters.
+Xor and binary fuse filters are a faster and more concise alternative to Bloom filters.
 They are also smaller than cuckoo filters.
 
-
+* Thomas Mueller Graf,  Daniel Lemire, Binary Fuse Filters: Fast and Smaller Than Xor Filters
 * Thomas Mueller Graf,  Daniel Lemire, [Xor Filters: Faster and Smaller Than Bloom and Cuckoo Filters](https://arxiv.org/abs/1912.08258), Journal of Experimental Algorithmics 25 (1), 2020. DOI: 10.1145/3376122
 
 
@@ -24,9 +24,9 @@ of less than 9 bits per entry for sizeable sets.
 You construct the filter as follows starting from a slice of 64-bit integers:
 
 ```Go
-filter,_ := xorfilter.Populate(keys) // keys is of type []uint64
+filter,_ := xorfilter.PopulateBinaryFuse8(keys) // keys is of type []uint64
 ```
-It returns an object of type `Xor8`. The 64-bit integers would typically be hash values of your objects.
+It returns an object of type `BinaryFuse8`. The 64-bit integers would typically be hash values of your objects.
 
 You can then query it as follows:
 
@@ -45,9 +45,13 @@ Though the filter itself does not use much memory, the construction of the filte
 For persistence, you only need to serialize the following data structure:
 
 ```Go
-type Xor8 struct {
-	Seed         uint64
-	BlockLength  uint32
+type BinaryFuse8 struct {
+	Seed               uint64
+	SegmentLength      uint32
+	SegmentLengthMask  uint32
+	SegmentCount       uint32
+	SegmentCountLength uint32
+
 	Fingerprints []uint8
 }
 ```
@@ -58,7 +62,7 @@ When constructing the filter, you should ensure that there is no duplicate keys.
 that this might happen, then you should check the error condition. 
 
 ```Go
-filter,err := xorfilter.Populate(keys) // keys is of type []uint64
+filter,err := xorfilter.PopulateBinaryFuse8(keys) // keys is of type []uint64
 if err != nil {
 	// you have duplicate keys, de-duplicate them?
 }
