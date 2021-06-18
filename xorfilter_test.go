@@ -50,6 +50,42 @@ func TestBasic(t *testing.T) {
 	}
 }
 
+
+func TestSmall(t *testing.T) {
+	keys := make([]uint64, SMALL_NUM_KEYS)
+	for i := range keys {
+		keys[i] = splitmix64(&rng)
+	}
+	filter, _ := Populate(keys)
+	for _, v := range keys {
+		assert.Equal(t, true, filter.Contains(v))
+	}
+	falsesize := 10000000
+	matches := 0
+	for i := 0; i < falsesize; i++ {
+		v := splitmix64(&rng)
+		if filter.Contains(v) {
+			matches++
+		}
+	}
+	fpp := float64(matches) * 100.0 / float64(falsesize)
+	assert.Equal(t, true, fpp < 0.40)
+	cut := 1000
+	if cut > SMALL_NUM_KEYS {
+		cut = SMALL_NUM_KEYS
+	}
+	keys = keys[:cut]
+	for trial := 0; trial < 10; trial++ {
+		for i := range keys {
+			keys[i] = splitmix64(&rng)
+		}
+		filter, _ = Populate(keys)
+		for _, v := range keys {
+			assert.Equal(t, true, filter.Contains(v))
+		}
+	}
+}
+
 func BenchmarkPopulate100000(b *testing.B) {
 	testsize := 10000
 	keys := make([]uint64, testsize)
