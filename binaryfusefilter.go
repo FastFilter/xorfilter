@@ -85,8 +85,8 @@ func mod3(x uint8) uint8 {
 // surely an indication that you have duplicate keys.
 func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	size := uint32(len(keys))
-	if size == 0 {
-		return nil, errors.New("provide a non-empty set")
+	if size <= 1 {
+		return nil, errors.New("the set should contain at least two elements")
 
 	}
 	filter := &BinaryFuse8{}
