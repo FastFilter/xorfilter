@@ -230,6 +230,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 
 		if stacksize + duplicates == size {
 			// Success
+			size = stacksize
 			break
 		}
 		for i := uint32(0); i < size; i++ {
