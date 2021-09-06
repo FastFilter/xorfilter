@@ -115,6 +115,9 @@ var MaxIterations = 100
 // surely an indication that you have duplicate keys.
 func Populate(keys []uint64) (*Xor8, error) {
 	size := len(keys)
+	if size == 0 {
+		return nil, errors.New("provide a non-empty set")
+	}
 	capacity := 32 + uint32(math.Ceil(1.23*float64(size)))
 	capacity = capacity / 3 * 3 // round it down to a multiple of 3
 

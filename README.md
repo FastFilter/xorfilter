@@ -56,21 +56,6 @@ type BinaryFuse8 struct {
 }
 ```
 
-# Duplicate keys
-
-When constructing the filter, you should ensure that there is no duplicate keys. If you think
-that this might happen, then you should check the error condition. 
-
-```Go
-filter,err := xorfilter.PopulateBinaryFuse8(keys) // keys is of type []uint64
-if err != nil {
-	// you have duplicate keys, de-duplicate them?
-}
-```
-
-Effectively, an error is returned when the filter could not be build after `MaxIterations`
-iterations (default to 100).
-
 
 # Implementations of xor filters in other programming languages
 

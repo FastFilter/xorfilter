@@ -18,7 +18,10 @@ type BinaryFuse8 struct {
 
 func calculateSegmentLength(arity uint32, size uint32) uint32 {
 	// These parameters are very sensitive. Replacing 'floor' by 'round' can
-    // substantially affect the construction time. 
+    // substantially affect the construction time.
+	if size == 0 {
+		return 4
+	}
 	if arity == 3 {
 		return uint32(1) << int(math.Floor(math.Log(float64(size)) / math.Log(3.33) + 2.25))
 	} else if arity == 4 {
@@ -46,7 +49,10 @@ func (filter *BinaryFuse8) initializeParameters(size uint32) {
 	}
 	filter.SegmentLengthMask = filter.SegmentLength - 1
 	sizeFactor := calculateSizeFactor(arity, size)
-	capacity := uint32(math.Round(float64(size) * sizeFactor))
+	capacity := uint32(0)
+	if size > 1 {
+		capacity = uint32(math.Round(float64(size) * sizeFactor))
+	}
 	initSegmentCount := (capacity+filter.SegmentLength-1)/filter.SegmentLength - (arity - 1)
 	arrayLength := (initSegmentCount + arity - 1) * filter.SegmentLength
 	filter.SegmentCount = (arrayLength + filter.SegmentLength - 1) / filter.SegmentLength
@@ -56,7 +62,6 @@ func (filter *BinaryFuse8) initializeParameters(size uint32) {
 		filter.SegmentCount = filter.SegmentCount - (arity - 1)
 	}
 	arrayLength = (filter.SegmentCount + arity - 1) * filter.SegmentLength
-
 	filter.SegmentCountLength = filter.SegmentCount * filter.SegmentLength
 	filter.Fingerprints = make([]uint8, arrayLength)
 }
@@ -80,9 +85,7 @@ func mod3(x uint8) uint8 {
 }
 
 // PopulateBinaryFuse8 fills a BinaryFuse8 filter with provided keys.
-// The caller is responsible for ensuring there are no duplicate keys provided.
-// The function may return an error after too many iterations: it is almost
-// surely an indication that you have duplicate keys.
+// The function may return an error after too many iterations: it is unlikely.
 func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	size := uint32(len(keys))
 	filter := &BinaryFuse8{}
@@ -133,6 +136,8 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 			startPos[segment_index] += 1
 		}
 		error := 0
+		duplicates := uint32(0)
+
 		for i := uint32(0); i < size; i++ {
 			hash := reverseOrder[i]
 			index1, index2, index3 := filter.getHashFromHash(hash)
@@ -145,6 +150,22 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 			t2count[index3] += 4
 			t2count[index3] ^= 2
 			t2hash[index3] ^= hash
+			// If we have duplicated hash values, then it is likely that
+			// the next comparison is true
+			if t2hash[index1] & t2hash[index2] & t2hash[index3] == 0 {
+				// next we do the actual test
+				if ((t2hash[index1] == 0) && (t2count[index1] == 8)) || ((t2hash[index2] == 0) && (t2count[index2] == 8)) || ((t2hash[index3] == 0) && (t2count[index3] == 8)) {
+					duplicates += 1
+					t2count[index1] -= 4
+					t2hash[index1] ^= hash
+					t2count[index2] -= 4
+					t2count[index2] ^= 1
+					t2hash[index2] ^= hash
+					t2count[index3] -= 4
+					t2count[index3] ^= 2
+					t2hash[index3] ^= hash
+				}
+			}
 			if t2count[index1] < 4 {
 				error = 1
 			}
@@ -207,7 +228,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 			}
 		}
 
-		if stacksize == size {
+		if stacksize + duplicates == size {
 			// Success
 			break
 		}
@@ -219,6 +240,9 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 			t2hash[i] = 0
 		}
 		filter.Seed = splitmix64(&rngcounter)
+	}
+	if size == 0 {
+		return filter, nil
 	}
 
 	for i := int(size - 1); i >= 0; i-- {
@@ -237,6 +261,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 
 	return filter, nil
 }
+
 
 // Contains returns `true` if key is part of the set with a false positive probability of <0.4%.
 func (filter *BinaryFuse8) Contains(key uint64) bool {
