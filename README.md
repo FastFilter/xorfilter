@@ -40,7 +40,7 @@ return false otherwise.
 
 An xor filter is immutable, it is concurrent. The expectation is that you build it once and use it many times.
 
-Though the filter itself does not use much memory, the construction of the filter needs many bytes of memory per set entry. 
+Though the filter itself does not use much memory, the construction of the filter needs many bytes of memory per set entry.
 
 For persistence, you only need to serialize the following data structure:
 
@@ -56,6 +56,20 @@ type BinaryFuse8 struct {
 }
 ```
 
+# Duplicate keys
+
+ When constructing the filter, you should ensure that there are not too many  duplicate keys. If you are hashing objects with a good hash function, you
+ should have no concern, because there should be very few collisions. However,
+ you can construct cases where there are many duplicates. If you think that this might happen, then you should check the error condition.
+
+ ```Go
+ filter,err := xorfilter.PopulateBinaryFuse8(keys) // keys is of type []uint64
+ if err != nil {
+  // you have too many duplicate keys, de-duplicate them?
+ }
+ ```
+
+ Effectively, an error is returned when the filter could not be build after `MaxIterations` iterations (default to 100).
 
 # Implementations of xor filters in other programming languages
 
