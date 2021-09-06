@@ -89,6 +89,7 @@ func TestBinaryFuse8Small(t *testing.T) {
 	}
 }
 
+
 func BenchmarkBinaryFuse8Populate1000000(b *testing.B) {
 	keys := make([]uint64, NUM_KEYS, NUM_KEYS)
 	for i := range keys {
@@ -101,12 +102,19 @@ func BenchmarkBinaryFuse8Populate1000000(b *testing.B) {
 	}
 }
 
-func Test_DuplicateKeysBinaryFuse(t *testing.T) {
-	keys := []uint64{1, 77, 31, 241, 303, 303}
-	expectedErr := "too many iterations, you probably have duplicate keys"
+func Test_ZeroSet(t *testing.T) {
+	keys := []uint64{}
 	_, err := PopulateBinaryFuse8(keys)
-	if err.Error() != expectedErr {
-		t.Fatalf("Unexpected error: %v, Expected: %v", err, expectedErr)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+}
+
+func Test_DuplicateKeysBinaryFuseDup(t *testing.T) {
+	keys := []uint64{303, 1, 77, 31, 241, 303}
+	_, err := PopulateBinaryFuse8(keys)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
 }
 
