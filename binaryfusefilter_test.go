@@ -4,20 +4,28 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-const NUM_KEYS = 1e6
+const NUM_KEYS = 11500
+
+// const NUM_KEYS = 1000000
 const SMALL_NUM_KEYS = 100
 
-
 func TestBinaryFuse8Basic(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+
 	keys := make([]uint64, NUM_KEYS)
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-	filter, _ := PopulateBinaryFuse8(keys)
+
+	filter, err := PopulateBinaryFuse8(keys)
+	require.NoError(t, err)
+
 	for _, v := range keys {
 		assert.Equal(t, true, filter.Contains(v))
 	}
