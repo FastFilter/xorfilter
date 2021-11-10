@@ -9,6 +9,7 @@ import (
 )
 
 const NUM_KEYS = 1e6
+const MID_NUM_KEYS = 11500
 const SMALL_NUM_KEYS = 100
 
 
@@ -52,6 +53,19 @@ func TestBinaryFuse8Basic(t *testing.T) {
 	}
 }
 
+func TestBinaryFuse8Issue23(t *testing.T) {
+    for trials := 0; trials < 20; trials++ {
+        keys := make([]uint64, MID_NUM_KEYS)
+        for i := range keys {
+            keys[i] = rand.Uint64()
+        }
+        filter, error := PopulateBinaryFuse8(keys)
+        assert.Equal(t, nil, error)
+        for _, v := range keys {
+            assert.Equal(t, true, filter.Contains(v))
+        }
+    }
+}
 
 func TestBinaryFuse8Small(t *testing.T) {
 	keys := make([]uint64, SMALL_NUM_KEYS)
