@@ -23,7 +23,7 @@ func calculateSegmentLength(arity uint32, size uint32) uint32 {
 		return 4
 	}
 	if arity == 3 {
-		return uint32(1) << int(math.Floor(math.Log(float64(size)) / math.Log(3.35) + 2.25))
+		return uint32(1) << int(math.Floor(math.Log(float64(size)) / math.Log(3.33) + 2.25))
 	} else if arity == 4 {
 		return uint32(1) << int(math.Floor(math.Log(float64(size)) / math.Log(2.91) - 0.5))
 	} else {
