@@ -107,7 +107,7 @@ func resetSets(setsi []xorset) []xorset {
 }
 
 // The maximum  number of iterations allowed before the populate function returns an error
-var MaxIterations = 100
+var MaxIterations = 1024
 
 // Populate fills the filter with provided keys.
 // The caller is responsible to ensure that there are no duplicate keys.
