@@ -9,7 +9,6 @@ They are also smaller than cuckoo filters.
 * Thomas Mueller Graf,  Daniel Lemire, Binary Fuse Filters: Fast and Smaller Than Xor Filters
 * Thomas Mueller Graf,  Daniel Lemire, [Xor Filters: Faster and Smaller Than Bloom and Cuckoo Filters](https://arxiv.org/abs/1912.08258), Journal of Experimental Algorithmics 25 (1), 2020. DOI: 10.1145/3376122
 
-
 <img src="figures/comparison.png" width="50%"/>
 
 
