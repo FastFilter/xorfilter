@@ -177,6 +177,14 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 			}
 		}
 		if error == 1 {
+			for i := uint32(0); i < size; i++ {
+				reverseOrder[i] = 0
+			}
+			for i := uint32(0); i < capacity; i++ {
+				t2count[i] = 0
+				t2hash[i] = 0
+			}
+			filter.Seed = splitmix64(&rngcounter)
 			continue
 		}
 
