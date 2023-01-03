@@ -15,7 +15,8 @@ They are also smaller than cuckoo filters. They are used in [production systems]
 We are assuming that your set is made of 64-bit integers. If you have strings
 or other data structures, you need to hash them first to a 64-bit integer. It
 is not important to have a good hash function, but collision should be unlikely
-(~1/2^64).
+(~1/2^64). A few collisions are acceptable, but we expect that your initial set 
+should have no duplicated entry. 
 
 The current implementation has a false positive rate of about 0.3% and a memory usage
 of less than 9 bits per entry for sizeable sets.
