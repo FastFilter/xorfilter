@@ -141,10 +141,10 @@ func Populate(keys []uint64) (*Xor8, error) {
 		iterations += 1
 		if iterations > MaxIterations {
 			// The probability of this happening is lower than the
-            // the cosmic-ray probability (i.e., a cosmic ray corrupts your system),
-            // but if it happens, we just fill the fingerprint with ones which
-            // will flag all possible keys as 'possible', ensuring a correct result.
-			for i:=0; i < len(filter.Fingerprints); i++ {
+			// the cosmic-ray probability (i.e., a cosmic ray corrupts your system),
+			// but if it happens, we just fill the fingerprint with ones which
+			// will flag all possible keys as 'possible', ensuring a correct result.
+			for i := 0; i < len(filter.Fingerprints); i++ {
 				filter.Fingerprints[i] = ^uint8(0)
 			}
 			return filter, nil
