@@ -35,8 +35,7 @@ You can then query it as follows:
 filter.Contains(v) // v is of type uint64
 ```
 
-It will *always* return true if v was part of the initial construction (`Populate`) and almost always
-return false otherwise.
+It will *always* return true if v was part of the initial construction (`Populate`) and almost always return false otherwise.
 
 An xor filter is immutable, it is concurrent. The expectation is that you build it once and use it many times.
 
