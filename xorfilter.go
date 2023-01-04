@@ -109,10 +109,9 @@ func resetSets(setsi []xorset) []xorset {
 // The maximum  number of iterations allowed before the populate function returns an error
 var MaxIterations = 1024
 
-// Populate fills the filter with provided keys.
-// The caller is responsible to ensure that there are no duplicate keys.
-// The function may return an error after too many iterations: it is almost
-// surely an indication that you have duplicate keys.
+// Populate fills the filter with provided keys. For best results,
+// the caller should avoid having too many duplicated keys.
+// The function may return an error if the set is empty.
 func Populate(keys []uint64) (*Xor8, error) {
 	size := len(keys)
 	if size == 0 {
@@ -141,7 +140,14 @@ func Populate(keys []uint64) (*Xor8, error) {
 	for {
 		iterations += 1
 		if iterations > MaxIterations {
-			return nil, errors.New("too many iterations, you probably have duplicate keys")
+			// The probability of this happening is lower than the
+            // the cosmic-ray probability (i.e., a cosmic ray corrupts your system),
+            // but if it happens, we just fill the fingerprint with ones which
+            // will flag all possible keys as 'possible', ensuring a correct result.
+			for i:=0; i < len(filter.Fingerprints); i++ {
+				filter.Fingerprints[i] = ^uint8(0)
+			}
+			return filter, nil
 		}
 
 		for i := 0; i < size; i++ {

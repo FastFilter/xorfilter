@@ -73,10 +73,9 @@ func (filter *Fuse8) geth012(hash uint64) h012 {
 	return answer
 }
 
-// Populate fills a Fuse8 filter with provided keys.
-// The caller is responsible for ensuring there are no duplicate keys provided.
-// The function may return an error after too many iterations: it is almost
-// surely an indication that you have duplicate keys.
+// Populate fills the filter with provided keys. For best results,
+// the caller should avoid having too many duplicated keys.
+// The function may return an error if the set is empty.
 func PopulateFuse8(keys []uint64) (*Fuse8, error) {
 
 	const FUSE_OVERHEAD = 1.0 / 0.879
@@ -103,7 +102,13 @@ func PopulateFuse8(keys []uint64) (*Fuse8, error) {
 	for true {
 		iterations += 1
 		if iterations > MaxIterations {
-			return nil, errors.New("too many iterations, you probably have duplicate keys")
+			// The probability of this happening is lower than the
+            // the cosmic-ray probability (i.e., a cosmic ray corrupts your system),
+            // but if it happens, we just fill the fingerprint with ones which
+            // will flag all possible keys as 'possible', ensuring a correct result.
+			for i:=0; i < len(filter.Fingerprints); i++ {
+				filter.Fingerprints[i] = ^uint8(0)
+			}
 		}
 
 		// Add all keys to the construction array.
