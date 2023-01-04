@@ -108,10 +108,9 @@ func BenchmarkFuse8Populate10000000(b *testing.B) {
 
 func Test_DuplicateKeysFuse(t *testing.T) {
 	keys := []uint64{1, 77, 31, 241, 303, 303}
-	expectedErr := "too many iterations, you probably have duplicate keys"
 	_, err := PopulateFuse8(keys)
-	if err.Error() != expectedErr {
-		t.Fatalf("Unexpected error: %v, Expected: %v", err, expectedErr)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
 }
 

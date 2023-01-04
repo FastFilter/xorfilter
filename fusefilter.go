@@ -109,6 +109,7 @@ func PopulateFuse8(keys []uint64) (*Fuse8, error) {
 			for i := 0; i < len(filter.Fingerprints); i++ {
 				filter.Fingerprints[i] = ^uint8(0)
 			}
+			return filter, nil
 		}
 
 		// Add all keys to the construction array.
