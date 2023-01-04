@@ -104,10 +104,9 @@ func BenchmarkPopulate100000(b *testing.B) {
 // credit: el10savio
 func Test_DuplicateKeys(t *testing.T) {
 	keys := []uint64{1, 77, 31, 241, 303, 303}
-	expectedErr := "too many iterations, you probably have duplicate keys"
 	_, err := Populate(keys)
-	if err.Error() != expectedErr {
-		t.Fatalf("Unexpected error: %v, Expected: %v", err, expectedErr)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
 }
 
