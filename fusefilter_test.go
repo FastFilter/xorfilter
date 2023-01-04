@@ -49,7 +49,6 @@ func TestFuse8Basic(t *testing.T) {
 	}
 }
 
-
 func TestFuse8Small(t *testing.T) {
 	keys := make([]uint64, SMALL_NUM_KEYS)
 	for i := range keys {
@@ -90,7 +89,7 @@ func TestFuse8Small(t *testing.T) {
 func BenchmarkConstructFuse8(b *testing.B) {
 	bigrandomarrayInit()
 	b.ResetTimer()
-	b.ReportAllocs()	
+	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
 		PopulateFuse8(bigrandomarray)
 	}

@@ -12,7 +12,6 @@ const NUM_KEYS = 1e6
 const MID_NUM_KEYS = 11500
 const SMALL_NUM_KEYS = 100
 
-
 func TestBinaryFuse8Basic(t *testing.T) {
 	keys := make([]uint64, NUM_KEYS)
 	for i := range keys {
@@ -54,17 +53,17 @@ func TestBinaryFuse8Basic(t *testing.T) {
 }
 
 func TestBinaryFuse8Issue23(t *testing.T) {
-    for trials := 0; trials < 20; trials++ {
-        keys := make([]uint64, MID_NUM_KEYS)
-        for i := range keys {
-            keys[i] = rand.Uint64()
-        }
-        filter, error := PopulateBinaryFuse8(keys)
-        assert.Equal(t, nil, error)
-        for _, v := range keys {
-            assert.Equal(t, true, filter.Contains(v))
-        }
-    }
+	for trials := 0; trials < 20; trials++ {
+		keys := make([]uint64, MID_NUM_KEYS)
+		for i := range keys {
+			keys[i] = rand.Uint64()
+		}
+		filter, error := PopulateBinaryFuse8(keys)
+		assert.Equal(t, nil, error)
+		for _, v := range keys {
+			assert.Equal(t, true, filter.Contains(v))
+		}
+	}
 }
 
 func TestBinaryFuse8Small(t *testing.T) {
@@ -102,7 +101,6 @@ func TestBinaryFuse8Small(t *testing.T) {
 
 	}
 }
-
 
 func BenchmarkBinaryFuse8Populate1000000(b *testing.B) {
 	keys := make([]uint64, NUM_KEYS, NUM_KEYS)
@@ -264,16 +262,14 @@ func Test_DuplicateKeysBinaryFuseDup_Issue30(t *testing.T) {
 
 var bogusbinary *BinaryFuse8
 
-
 func BenchmarkConstructBinaryFuse8(b *testing.B) {
 	bigrandomarrayInit()
 	b.ResetTimer()
-	b.ReportAllocs()	
+	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
 		PopulateBinaryFuse8(bigrandomarray)
 	}
 }
-
 
 func BenchmarkBinaryFuse8Contains1000000(b *testing.B) {
 	keys := make([]uint64, NUM_KEYS, NUM_KEYS)
@@ -287,7 +283,6 @@ func BenchmarkBinaryFuse8Contains1000000(b *testing.B) {
 		filter.Contains(keys[n%len(keys)])
 	}
 }
-
 
 var binaryfusedbig *BinaryFuse8
 
