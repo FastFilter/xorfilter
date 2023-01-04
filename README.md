@@ -67,4 +67,3 @@ When constructing the filter, you should ensure that there are not too many  dup
 * [C](https://github.com/FastFilter/xor_singleheader)
 * [C99](https://github.com/skeeto/xf8)
 * [Python](https://github.com/GreyDireWolf/pyxorfilter)
-* [C#](https://github.com/MichaelStromberg-Illumina/SaOptimization/blob/16d40594eeebc6593ddf6ff42bb79eb06a8099a0/NirvanaCommon/Xor8.cs)
