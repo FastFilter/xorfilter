@@ -1,6 +1,6 @@
 # xorfilter: Go library implementing xor and binary fuse filters
 [![GoDoc](https://godoc.org/github.com/FastFilter/xorfilter?status.svg)](https://godoc.org/github.com/FastFilter/xorfilter)
-[![Build Status](https://cloud.drone.io/api/badges/FastFilter/xorfilter/status.svg)](https://cloud.drone.io/FastFilter/xorfilter)
+[![Test](https://github.com/FastFilter/xorfilter/actions/workflows/test.yml/badge.svg)](https://github.com/FastFilter/xorfilter/actions/workflows/test.yml)
 
 Bloom filters are used to quickly check whether an element is part of a set.
 Xor and binary fuse filters are a faster and more concise alternative to Bloom filters.
