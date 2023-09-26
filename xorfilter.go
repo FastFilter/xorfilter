@@ -3,6 +3,7 @@ package xorfilter
 import (
 	"errors"
 	"math"
+	"sort"
 )
 
 func murmur64(h uint64) uint64 {
@@ -141,13 +142,8 @@ func Populate(keys []uint64) (*Xor8, error) {
 		iterations += 1
 		if iterations > MaxIterations {
 			// The probability of this happening is lower than the
-			// the cosmic-ray probability (i.e., a cosmic ray corrupts your system),
-			// but if it happens, we just fill the fingerprint with ones which
-			// will flag all possible keys as 'possible', ensuring a correct result.
-			for i := 0; i < len(filter.Fingerprints); i++ {
-				filter.Fingerprints[i] = ^uint8(0)
-			}
-			return filter, nil
+			// the cosmic-ray probability (i.e., a cosmic ray corrupts your system).
+			return nil, errors.New("too many iterations")
 		}
 
 		for i := 0; i < size; i++ {
@@ -261,6 +257,11 @@ func Populate(keys []uint64) (*Xor8, error) {
 			break
 		}
 
+		if iterations == 10 {
+			keys = pruneDuplicates(keys)
+			size = len(keys)
+		}
+
 		sets0 = resetSets(sets0)
 		sets1 = resetSets(sets1)
 		sets2 = resetSets(sets2)
@@ -283,4 +284,18 @@ func Populate(keys []uint64) (*Xor8, error) {
 		filter.Fingerprints[ki.index] = val
 	}
 	return filter, nil
+}
+
+func pruneDuplicates(array []uint64) []uint64 {
+	sort.Slice(array, func(i, j int) bool {
+		return array[i] < array[j]
+	})
+	pos := 0
+	for i := 1; i < len(array); i++ {
+		if array[i] != array[pos] {
+			array[pos+1] = array[i]
+			pos += 1
+		}
+	}
+	return array[:pos+1]
 }

@@ -5,7 +5,9 @@ import (
 	"math/rand"
 	"testing"
 	"time"
+	"unsafe"
 
+	"github.com/cespare/xxhash"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -101,6 +103,13 @@ func BenchmarkPopulate100000(b *testing.B) {
 	}
 }
 
+func encode(v1, v2 int32) []byte {
+	v := make([]byte, 8)
+	v = append(v, unsafe.Slice((*byte)(unsafe.Pointer(&v1)), 4)...)
+	v = append(v, unsafe.Slice((*byte)(unsafe.Pointer(&v2)), 4)...)
+	return v
+}
+
 // credit: el10savio
 func Test_DuplicateKeys(t *testing.T) {
 	keys := []uint64{1, 77, 31, 241, 303, 303}
@@ -167,5 +176,45 @@ func BenchmarkXor8bigContains50000000(b *testing.B) {
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		xor8big.Contains(rand.Uint64())
+	}
+}
+
+func TestfsdIssue35_basic(t *testing.T) {
+	hashes := make([]uint64, 0)
+	for i := 0; i < 2000; i++ {
+		v := encode(int32(rand.Intn(10)), int32(rand.Intn(100000)))
+		hashes = append(hashes, xxhash.Sum64(v))
+	}
+	inner, err := Populate(hashes)
+	if err != nil {
+		panic(err)
+	}
+	for i, d := range hashes {
+		e := inner.Contains(d)
+		fmt.Println("checking ", d)
+		if !e {
+			panic(i)
+		}
+	}
+}
+
+func Test_Issue35_basic(t *testing.T) {
+	for test := 0; test < 100; test++ {
+		hashes := make([]uint64, 0)
+		for i := 0; i < 40000; i++ {
+			v := encode(int32(rand.Intn(10)), int32(rand.Intn(100000)))
+			hashes = append(hashes, xxhash.Sum64(v))
+		}
+		inner, err := PopulateBinaryFuse8(hashes)
+		if err != nil {
+			panic(err)
+		}
+		for i, d := range hashes {
+			e := inner.Contains(d)
+			if !e {
+				panic(i)
+			}
+
+		}
 	}
 }
