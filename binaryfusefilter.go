@@ -1,9 +1,9 @@
 package xorfilter
 
 import (
+	"errors"
 	"math"
 	"math/bits"
-	"sort"
 )
 
 type BinaryFuse8 struct {
@@ -114,13 +114,8 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 		iterations += 1
 		if iterations > MaxIterations {
 			// The probability of this happening is lower than the
-			// the cosmic-ray probability (i.e., a cosmic ray corrupts your system),
-			// but if it happens, we just fill the fingerprint with ones which
-			// will flag all possible keys as 'possible', ensuring a correct result.
-			for i := 0; i < len(filter.Fingerprints); i++ {
-				filter.Fingerprints[i] = ^uint8(0)
-			}
-			return filter, nil
+			// the cosmic-ray probability (i.e., a cosmic ray corrupts your system).
+			return nil, errors.New("too many iterations")
 		}
 
 		blockBits := 1
@@ -252,7 +247,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 			// manage to remove them all. We may simply sort the key to
 			// solve the issue. This will run in time O(n log n) and it
 			// mutates the input.
-			sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+			keys = pruneDuplicates(keys)
 		}
 		for i := uint32(0); i < size; i++ {
 			reverseOrder[i] = 0
