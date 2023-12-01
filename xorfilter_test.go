@@ -179,7 +179,7 @@ func BenchmarkXor8bigContains50000000(b *testing.B) {
 	}
 }
 
-func TestfsdIssue35_basic(t *testing.T) {
+func TestFSDIssue35_basic(t *testing.T) {
 	hashes := make([]uint64, 0)
 	for i := 0; i < 2000; i++ {
 		v := encode(int32(rand.Intn(10)), int32(rand.Intn(100000)))

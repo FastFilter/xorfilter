@@ -110,7 +110,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	// this could be used to compute the mod3
 	// tabmod3 := [5]uint8{0,1,2,0,1}
 	iterations := 0
-	for true {
+	for {
 		iterations += 1
 		if iterations > MaxIterations {
 			// The probability of this happening is lower than the
@@ -123,7 +123,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 			blockBits += 1
 		}
 		startPos := make([]uint, 1<<blockBits)
-		for i, _ := range startPos {
+		for i := range startPos {
 			// important: we do not want i * size to overflow!!!
 			startPos[i] = uint((uint64(i) * uint64(size)) >> blockBits)
 		}
