@@ -6,89 +6,26 @@ import (
 	"math/bits"
 )
 
-type BinaryFuse8 struct {
+type Unsigned interface {
+	~uint8 | ~uint16 | ~uint32
+}
+
+type BinaryFuse[T Unsigned] struct {
 	Seed               uint64
 	SegmentLength      uint32
 	SegmentLengthMask  uint32
 	SegmentCount       uint32
 	SegmentCountLength uint32
 
-	Fingerprints []uint8
+	Fingerprints []T
 }
 
-func calculateSegmentLength(arity uint32, size uint32) uint32 {
-	// These parameters are very sensitive. Replacing 'floor' by 'round' can
-	// substantially affect the construction time.
-	if size == 0 {
-		return 4
-	}
-	if arity == 3 {
-		return uint32(1) << int(math.Floor(math.Log(float64(size))/math.Log(3.33)+2.25))
-	} else if arity == 4 {
-		return uint32(1) << int(math.Floor(math.Log(float64(size))/math.Log(2.91)-0.5))
-	} else {
-		return 65536
-	}
-}
-
-func calculateSizeFactor(arity uint32, size uint32) float64 {
-	if arity == 3 {
-		return math.Max(1.125, 0.875+0.25*math.Log(1000000)/math.Log(float64(size)))
-	} else if arity == 4 {
-		return math.Max(1.075, 0.77+0.305*math.Log(600000)/math.Log(float64(size)))
-	} else {
-		return 2.0
-	}
-}
-
-func (filter *BinaryFuse8) initializeParameters(size uint32) {
-	arity := uint32(3)
-	filter.SegmentLength = calculateSegmentLength(arity, size)
-	if filter.SegmentLength > 262144 {
-		filter.SegmentLength = 262144
-	}
-	filter.SegmentLengthMask = filter.SegmentLength - 1
-	sizeFactor := calculateSizeFactor(arity, size)
-	capacity := uint32(0)
-	if size > 1 {
-		capacity = uint32(math.Round(float64(size) * sizeFactor))
-	}
-	initSegmentCount := (capacity+filter.SegmentLength-1)/filter.SegmentLength - (arity - 1)
-	arrayLength := (initSegmentCount + arity - 1) * filter.SegmentLength
-	filter.SegmentCount = (arrayLength + filter.SegmentLength - 1) / filter.SegmentLength
-	if filter.SegmentCount <= arity-1 {
-		filter.SegmentCount = 1
-	} else {
-		filter.SegmentCount = filter.SegmentCount - (arity - 1)
-	}
-	arrayLength = (filter.SegmentCount + arity - 1) * filter.SegmentLength
-	filter.SegmentCountLength = filter.SegmentCount * filter.SegmentLength
-	filter.Fingerprints = make([]uint8, arrayLength)
-}
-
-func (filter *BinaryFuse8) getHashFromHash(hash uint64) (uint32, uint32, uint32) {
-	hi, _ := bits.Mul64(hash, uint64(filter.SegmentCountLength))
-	h0 := uint32(hi)
-	h1 := h0 + filter.SegmentLength
-	h2 := h1 + filter.SegmentLength
-	h1 ^= uint32(hash>>18) & filter.SegmentLengthMask
-	h2 ^= uint32(hash) & filter.SegmentLengthMask
-	return h0, h1, h2
-}
-
-func mod3(x uint8) uint8 {
-	if x > 2 {
-		x -= 3
-	}
-	return x
-}
-
-// PopulateBinaryFuse8 fills the filter with provided keys. For best results,
+// NewBinaryFuse fills the filter with provided keys. For best results,
 // the caller should avoid having too many duplicated keys.
 // The function may return an error if the set is empty.
-func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
+func NewBinaryFuse[T Unsigned](keys []uint64) (*BinaryFuse[T], error) {
 	size := uint32(len(keys))
-	filter := &BinaryFuse8{}
+	filter := &BinaryFuse[T]{}
 	filter.initializeParameters(size)
 	rngcounter := uint64(1)
 	filter.Seed = splitmix64(&rngcounter)
@@ -98,8 +35,8 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	// the lowest 2 bits are the h index (0, 1, or 2)
 	// so we only have 6 bits for counting;
 	// but that's sufficient
-	t2count := make([]uint8, capacity)
-	reverseH := make([]uint8, size)
+	t2count := make([]T, capacity)
+	reverseH := make([]T, size)
 
 	t2hash := make([]uint64, capacity)
 	reverseOrder := make([]uint64, size+1)
@@ -224,7 +161,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 					Qsize++
 				}
 				t2count[other_index1] -= 4
-				t2count[other_index1] ^= mod3(found + 1) // could use this instead: tabmod3[found+1]
+				t2count[other_index1] ^= filter.mod3(found + 1) // could use this instead: tabmod3[found+1]
 				t2hash[other_index1] ^= hash
 
 				other_index2 := h012[found+2]
@@ -233,7 +170,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 					Qsize++
 				}
 				t2count[other_index2] -= 4
-				t2count[other_index2] ^= mod3(found + 2) // could use this instead: tabmod3[found+2]
+				t2count[other_index2] ^= filter.mod3(found + 2) // could use this instead: tabmod3[found+2]
 				t2hash[other_index2] ^= hash
 			}
 		}
@@ -265,7 +202,7 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	for i := int(size - 1); i >= 0; i-- {
 		// the hash of the key we insert next
 		hash := reverseOrder[i]
-		xor2 := uint8(fingerprint(hash))
+		xor2 := T(fingerprint(hash))
 		index1, index2, index3 := filter.getHashFromHash(hash)
 		found := reverseH[i]
 		h012[0] = index1
@@ -279,11 +216,79 @@ func PopulateBinaryFuse8(keys []uint64) (*BinaryFuse8, error) {
 	return filter, nil
 }
 
-// Contains returns `true` if key is part of the set with a false positive probability of <0.4%.
-func (filter *BinaryFuse8) Contains(key uint64) bool {
+func (filter *BinaryFuse[T]) initializeParameters(size uint32) {
+	arity := uint32(3)
+	filter.SegmentLength = calculateSegmentLength(arity, size)
+	if filter.SegmentLength > 262144 {
+		filter.SegmentLength = 262144
+	}
+	filter.SegmentLengthMask = filter.SegmentLength - 1
+	sizeFactor := calculateSizeFactor(arity, size)
+	capacity := uint32(0)
+	if size > 1 {
+		capacity = uint32(math.Round(float64(size) * sizeFactor))
+	}
+	initSegmentCount := (capacity+filter.SegmentLength-1)/filter.SegmentLength - (arity - 1)
+	arrayLength := (initSegmentCount + arity - 1) * filter.SegmentLength
+	filter.SegmentCount = (arrayLength + filter.SegmentLength - 1) / filter.SegmentLength
+	if filter.SegmentCount <= arity-1 {
+		filter.SegmentCount = 1
+	} else {
+		filter.SegmentCount = filter.SegmentCount - (arity - 1)
+	}
+	arrayLength = (filter.SegmentCount + arity - 1) * filter.SegmentLength
+	filter.SegmentCountLength = filter.SegmentCount * filter.SegmentLength
+	filter.Fingerprints = make([]T, arrayLength)
+}
+
+func (filter *BinaryFuse[T]) mod3(x T) T {
+	if x > 2 {
+		x -= 3
+	}
+
+	return x
+}
+
+func (filter *BinaryFuse[T]) getHashFromHash(hash uint64) (uint32, uint32, uint32) {
+	hi, _ := bits.Mul64(hash, uint64(filter.SegmentCountLength))
+	h0 := uint32(hi)
+	h1 := h0 + filter.SegmentLength
+	h2 := h1 + filter.SegmentLength
+	h1 ^= uint32(hash>>18) & filter.SegmentLengthMask
+	h2 ^= uint32(hash) & filter.SegmentLengthMask
+	return h0, h1, h2
+}
+
+// Contains returns `true` if key is part of the set with a false positive probability.
+func (filter *BinaryFuse[T]) Contains(key uint64) bool {
 	hash := mixsplit(key, filter.Seed)
-	f := uint8(fingerprint(hash))
+	f := T(fingerprint(hash))
 	h0, h1, h2 := filter.getHashFromHash(hash)
 	f ^= filter.Fingerprints[h0] ^ filter.Fingerprints[h1] ^ filter.Fingerprints[h2]
 	return f == 0
+}
+
+func calculateSegmentLength(arity uint32, size uint32) uint32 {
+	// These parameters are very sensitive. Replacing 'floor' by 'round' can
+	// substantially affect the construction time.
+	if size == 0 {
+		return 4
+	}
+	if arity == 3 {
+		return uint32(1) << int(math.Floor(math.Log(float64(size))/math.Log(3.33)+2.25))
+	} else if arity == 4 {
+		return uint32(1) << int(math.Floor(math.Log(float64(size))/math.Log(2.91)-0.5))
+	} else {
+		return 65536
+	}
+}
+
+func calculateSizeFactor(arity uint32, size uint32) float64 {
+	if arity == 3 {
+		return math.Max(1.125, 0.875+0.25*math.Log(1000000)/math.Log(float64(size)))
+	} else if arity == 4 {
+		return math.Max(1.075, 0.77+0.305*math.Log(600000)/math.Log(float64(size)))
+	} else {
+		return 2.0
+	}
 }

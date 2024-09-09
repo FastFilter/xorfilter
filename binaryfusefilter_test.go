@@ -13,19 +13,21 @@ const NUM_KEYS = 1e6
 const MID_NUM_KEYS = 11500
 const SMALL_NUM_KEYS = 100
 
-func TestBinaryFuse8Basic(t *testing.T) {
+type testType uint8
+
+func TestBinaryFuseNBasic(t *testing.T) {
 	keys := make([]uint64, NUM_KEYS)
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-	filter, _ := PopulateBinaryFuse8(keys)
+	filter, _ := NewBinaryFuse[testType](keys)
 	for _, v := range keys {
 		assert.Equal(t, true, filter.Contains(v))
 	}
 	falsesize := 10000000
 	matches := 0
 	bpv := float64(len(filter.Fingerprints)) * 8.0 / float64(NUM_KEYS)
-	fmt.Println("Binary Fuse8 filter:")
+	fmt.Println("Binary Fuse filter:")
 	fmt.Println("bits per entry ", bpv)
 	for i := 0; i < falsesize; i++ {
 		v := rand.Uint64()
@@ -45,7 +47,7 @@ func TestBinaryFuse8Basic(t *testing.T) {
 		for i := range keys {
 			keys[i] = rand.Uint64()
 		}
-		filter, _ = PopulateBinaryFuse8(keys)
+		filter, _ = NewBinaryFuse[testType](keys)
 		for _, v := range keys {
 			assert.Equal(t, true, filter.Contains(v))
 		}
@@ -53,13 +55,13 @@ func TestBinaryFuse8Basic(t *testing.T) {
 	}
 }
 
-func TestBinaryFuse8Issue23(t *testing.T) {
+func TestBinaryFuseNIssue23(t *testing.T) {
 	for trials := 0; trials < 20; trials++ {
 		keys := make([]uint64, MID_NUM_KEYS)
 		for i := range keys {
 			keys[i] = rand.Uint64()
 		}
-		filter, error := PopulateBinaryFuse8(keys)
+		filter, error := NewBinaryFuse[testType](keys)
 		assert.Equal(t, nil, error)
 		for _, v := range keys {
 			assert.Equal(t, true, filter.Contains(v))
@@ -67,12 +69,12 @@ func TestBinaryFuse8Issue23(t *testing.T) {
 	}
 }
 
-func TestBinaryFuse8Small(t *testing.T) {
+func TestBinaryFuseNSmall(t *testing.T) {
 	keys := make([]uint64, SMALL_NUM_KEYS)
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-	filter, _ := PopulateBinaryFuse8(keys)
+	filter, _ := NewBinaryFuse[testType](keys)
 	for _, v := range keys {
 		assert.Equal(t, true, filter.Contains(v))
 	}
@@ -95,7 +97,7 @@ func TestBinaryFuse8Small(t *testing.T) {
 		for i := range keys {
 			keys[i] = rand.Uint64()
 		}
-		filter, _ = PopulateBinaryFuse8(keys)
+		filter, _ = NewBinaryFuse[testType](keys)
 		for _, v := range keys {
 			assert.Equal(t, true, filter.Contains(v))
 		}
@@ -103,35 +105,23 @@ func TestBinaryFuse8Small(t *testing.T) {
 	}
 }
 
-func BenchmarkBinaryFuse8Populate1000000(b *testing.B) {
-	keys := make([]uint64, NUM_KEYS)
-	for i := range keys {
-		keys[i] = rand.Uint64()
-	}
-
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		bogusbinary, _ = PopulateBinaryFuse8(keys)
-	}
-}
-
-func Test_ZeroSet(t *testing.T) {
+func TestBinaryFuseN_ZeroSet(t *testing.T) {
 	keys := []uint64{}
-	_, err := PopulateBinaryFuse8(keys)
+	_, err := NewBinaryFuse[testType](keys)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 }
 
-func Test_DuplicateKeysBinaryFuseDup(t *testing.T) {
+func TestBinaryFuseN_DuplicateKeysBinaryFuseDup(t *testing.T) {
 	keys := []uint64{303, 1, 77, 31, 241, 303}
-	_, err := PopulateBinaryFuse8(keys)
+	_, err := NewBinaryFuse[testType](keys)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 }
 
-func Test_DuplicateKeysBinaryFuseDup_Issue30(t *testing.T) {
+func TestBinaryFuseN_DuplicateKeysBinaryFuseDup_Issue30(t *testing.T) {
 	keys := []uint64{
 		14032282262966018013,
 		14032282273189634013,
@@ -255,30 +245,47 @@ func Test_DuplicateKeysBinaryFuseDup_Issue30(t *testing.T) {
 		4825061103098367168,
 		4825061103098367168,
 	}
-	_, err := PopulateBinaryFuse8(keys)
+	_, err := NewBinaryFuse[testType](keys)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 }
 
-var bogusbinary *BinaryFuse8
-var bogusbool bool
+var (
+	bogusbool      bool
+	binaryfusedbig *BinaryFuse8
+	bogusbinary    *BinaryFuse[testType]
+)
 
-func BenchmarkConstructBinaryFuse8(b *testing.B) {
-	bigrandomarrayInit()
-	b.ResetTimer()
-	b.ReportAllocs()
-	for n := 0; n < b.N; n++ {
-		bogusbinary, _ = PopulateBinaryFuse8(bigrandomarray)
-	}
-}
-
-func BenchmarkBinaryFuse8Contains1000000(b *testing.B) {
+func BenchmarkBinaryFuseNPopulate1000000(b *testing.B) {
 	keys := make([]uint64, NUM_KEYS)
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-	filter, _ := PopulateBinaryFuse8(keys)
+
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		bogusbinary, _ = NewBinaryFuse[testType](keys)
+	}
+}
+
+func BenchmarkConstructBinaryFuseN(b *testing.B) {
+	bigrandomarrayInit()
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for n := 0; n < b.N; n++ {
+		bogusbinary, _ = NewBinaryFuse[testType](bigrandomarray)
+	}
+}
+
+func BenchmarkBinaryFuseNContains1000000(b *testing.B) {
+	keys := make([]uint64, NUM_KEYS)
+	for i := range keys {
+		keys[i] = rand.Uint64()
+	}
+	filter, _ := NewBinaryFuse[testType](keys)
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -286,19 +293,17 @@ func BenchmarkBinaryFuse8Contains1000000(b *testing.B) {
 	}
 }
 
-var binaryfusedbig *BinaryFuse8
-
 func binaryfusedbigInit() {
 	fmt.Println("Binary Fuse setup")
 	keys := make([]uint64, 50000000)
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-	binaryfusedbig, _ = PopulateBinaryFuse8(keys)
+	NewBinaryFuse[testType](keys)
 	fmt.Println("Binary Fuse setup ok")
 }
 
-func BenchmarkBinaryFuse8Contains50000000(b *testing.B) {
+func BenchmarkBinaryFuseNContains50000000(b *testing.B) {
 	if binaryfusedbig == nil {
 		binaryfusedbigInit()
 	}
@@ -308,14 +313,14 @@ func BenchmarkBinaryFuse8Contains50000000(b *testing.B) {
 	}
 }
 
-func Test_Issue35(t *testing.T) {
+func TestBinaryFuseN_Issue35(t *testing.T) {
 	for test := 0; test < 100; test++ {
 		hashes := make([]uint64, 0)
 		for i := 0; i < 40000; i++ {
 			v := encode(int32(rand.Intn(10)), int32(rand.Intn(100000)))
 			hashes = append(hashes, xxhash.Sum64(v))
 		}
-		inner, err := PopulateBinaryFuse8(hashes)
+		inner, err := NewBinaryFuse[testType](hashes)
 		if err != nil {
 			panic(err)
 		}
