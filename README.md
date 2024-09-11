@@ -26,7 +26,7 @@ is not important to have a good hash function, but collision should be unlikely
 (~1/2^64). A few collisions are acceptable, but we expect that your initial set 
 should have no duplicated entry. 
 
-The current implementation has a false positive rate of about 0.3% and a memory usage
+The current implementation has a false positive rate of about 0.4% and a memory usage
 of less than 9 bits per entry for sizeable sets.
 
 You construct the filter as follows starting from a slice of 64-bit integers:
@@ -64,6 +64,22 @@ type BinaryFuse8 struct {
 ```
 
 When constructing the filter, you should ensure that there are not too many  duplicate keys for best results.
+
+# Generic (8-bit, 16-bit, 32-bit)
+
+By default, we use 8-bit fingerprints which provide a 0.4% false positive rate. Some user might want to reduce
+this false positive rate at the expensive of more memory usage. For this purpose, we provide a generic type
+(`NewBinaryFuse[T]`). 
+
+```
+filter8, _ := xorfilter.NewBinaryFuse[uint8](keys) // 0.39% false positive rate, uses about 9 bits per key
+filter16, _ := xorfilter.NewBinaryFuse[uint16](keys) // 0.0015% false positive rate, uses about 18 bits per key
+filter32, _ := xorfilter.NewBinaryFuse[uint32](keys) // 2e-08% false positive rate, uses about 36 bits per key
+```
+The 32-bit fingerprints are provided but not recommended. Most users will want to use either the 8-bit or 16-bit fingerprints.
+
+The Binary Fuse filters have memory usages of about 9 bits per key in the 8-bit case, 18 bits per key in the 16-bit case,
+for sufficiently large sets (hundreds of thousands of keys). There is more per-key memory usage when the set is smaller.
 
 
 # Implementations of xor filters in other programming languages
