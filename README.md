@@ -58,7 +58,6 @@ type BinaryFuse8 struct {
 	SegmentLengthMask  uint32
 	SegmentCount       uint32
 	SegmentCountLength uint32
-
 	Fingerprints []uint8
 }
 ```
@@ -71,7 +70,7 @@ By default, we use 8-bit fingerprints which provide a 0.4% false positive rate. 
 this false positive rate at the expensive of more memory usage. For this purpose, we provide a generic type
 (`NewBinaryFuse[T]`). 
 
-```
+```Go
 filter8, _ := xorfilter.NewBinaryFuse[uint8](keys) // 0.39% false positive rate, uses about 9 bits per key
 filter16, _ := xorfilter.NewBinaryFuse[uint16](keys) // 0.0015% false positive rate, uses about 18 bits per key
 filter32, _ := xorfilter.NewBinaryFuse[uint32](keys) // 2e-08% false positive rate, uses about 36 bits per key
