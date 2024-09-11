@@ -299,7 +299,7 @@ func binaryfusedbigInit() {
 	for i := range keys {
 		keys[i] = rand.Uint64()
 	}
-	NewBinaryFuse[testType](keys)
+	binaryfusedbig, _ = PopulateBinaryFuse8(keys)
 	fmt.Println("Binary Fuse setup ok")
 }
 
