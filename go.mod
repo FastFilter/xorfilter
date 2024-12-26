@@ -3,7 +3,7 @@ module github.com/FastFilter/xorfilter
 go 1.22
 
 require (
-	github.com/cespare/xxhash v1.1.0
+	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/stretchr/testify v1.9.0
 )
 
