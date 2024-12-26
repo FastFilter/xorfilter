@@ -3,7 +3,7 @@ package xorfilter
 import (
 	"errors"
 	"math"
-	"sort"
+	"slices"
 )
 
 func murmur64(h uint64) uint64 {
@@ -287,9 +287,7 @@ func Populate(keys []uint64) (*Xor8, error) {
 }
 
 func pruneDuplicates(array []uint64) []uint64 {
-	sort.Slice(array, func(i, j int) bool {
-		return array[i] < array[j]
-	})
+	slices.Sort(array)
 	pos := 0
 	for i := 1; i < len(array); i++ {
 		if array[i] != array[pos] {
