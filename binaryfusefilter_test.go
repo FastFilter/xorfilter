@@ -2,7 +2,7 @@ package xorfilter
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/cespare/xxhash"
@@ -43,9 +43,9 @@ func TestBinaryFuseNBasic(t *testing.T) {
 	}
 	keys = keys[:cut]
 	for trial := 0; trial < 10; trial++ {
-		rand.Seed(int64(trial))
+		r := rand.New(rand.NewPCG(uint64(trial), uint64(trial)))
 		for i := range keys {
-			keys[i] = rand.Uint64()
+			keys[i] = r.Uint64()
 		}
 		filter, _ = NewBinaryFuse[testType](keys)
 		for _, v := range keys {
@@ -93,9 +93,9 @@ func TestBinaryFuseNSmall(t *testing.T) {
 	}
 	keys = keys[:cut]
 	for trial := 0; trial < 10; trial++ {
-		rand.Seed(int64(trial))
+		r := rand.New(rand.NewPCG(uint64(trial), uint64(trial)))
 		for i := range keys {
-			keys[i] = rand.Uint64()
+			keys[i] = r.Uint64()
 		}
 		filter, _ = NewBinaryFuse[testType](keys)
 		for _, v := range keys {
@@ -317,7 +317,7 @@ func TestBinaryFuseN_Issue35(t *testing.T) {
 	for test := 0; test < 100; test++ {
 		hashes := make([]uint64, 0)
 		for i := 0; i < 40000; i++ {
-			v := encode(int32(rand.Intn(10)), int32(rand.Intn(100000)))
+			v := encode(rand.Int32N(10), rand.Int32N(100000))
 			hashes = append(hashes, xxhash.Sum64(v))
 		}
 		inner, err := NewBinaryFuse[testType](hashes)
