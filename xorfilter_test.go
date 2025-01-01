@@ -2,7 +2,7 @@ package xorfilter
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"testing"
 	"time"
 	"unsafe"
@@ -182,7 +182,7 @@ func BenchmarkXor8bigContains50000000(b *testing.B) {
 func TestFSDIssue35_basic(t *testing.T) {
 	hashes := make([]uint64, 0)
 	for i := 0; i < 2000; i++ {
-		v := encode(int32(rand.Intn(10)), int32(rand.Intn(100000)))
+		v := encode(rand.Int32N(10), rand.Int32N(100000))
 		hashes = append(hashes, xxhash.Sum64(v))
 	}
 	inner, err := Populate(hashes)
@@ -202,7 +202,7 @@ func Test_Issue35_basic(t *testing.T) {
 	for test := 0; test < 100; test++ {
 		hashes := make([]uint64, 0)
 		for i := 0; i < 40000; i++ {
-			v := encode(int32(rand.Intn(10)), int32(rand.Intn(100000)))
+			v := encode(rand.Int32N(10), rand.Int32N(100000))
 			hashes = append(hashes, xxhash.Sum64(v))
 		}
 		inner, err := PopulateBinaryFuse8(hashes)
