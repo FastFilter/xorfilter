@@ -99,14 +99,6 @@ func scanCount(Qi []keyindex, setsi []xorset) ([]keyindex, int) {
 	return Qi, QiSize
 }
 
-// fill setsi to xorset{0, 0}
-func resetSets(setsi []xorset) []xorset {
-	for i := range setsi {
-		setsi[i] = xorset{0, 0}
-	}
-	return setsi
-}
-
 // The maximum  number of iterations allowed before the populate function returns an error
 var MaxIterations = 1024
 
@@ -262,9 +254,9 @@ func Populate(keys []uint64) (*Xor8, error) {
 			size = len(keys)
 		}
 
-		sets0 = resetSets(sets0)
-		sets1 = resetSets(sets1)
-		sets2 = resetSets(sets2)
+		clear(sets0)
+		clear(sets1)
+		clear(sets2)
 
 		filter.Seed = splitmix64(&rngcounter)
 	}
