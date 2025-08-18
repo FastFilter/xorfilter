@@ -91,3 +91,9 @@ for sufficiently large sets (hundreds of thousands of keys). There is more per-k
 * [C99](https://github.com/skeeto/xf8)
 * [Python](https://github.com/GreyDireWolf/pyxorfilter)
 * [C#](https://github.com/jonmat/FastIndex)
+
+
+## Further reading
+
+<p>Mastering Programming: From Testing to Performance in Go</p>
+<div><a href="https://www.amazon.com/dp/B0FMPGSWR5"><img style="margin-left: auto; margin-right: auto;" src="https://m.media-amazon.com/images/I/61feneHS7kL._SL1499_.jpg" alt="" width="250px" /></a></div>
