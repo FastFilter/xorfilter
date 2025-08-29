@@ -89,7 +89,7 @@ for sufficiently large sets (hundreds of thousands of keys). There is more per-k
 * [Java](https://github.com/FastFilter/fastfilter_java)
 * [C](https://github.com/FastFilter/xor_singleheader)
 * [C99](https://github.com/skeeto/xf8)
-* [Python](https://github.com/GreyDireWolf/pyxorfilter)
+* [Python](https://github.com/FastFilter/pyfusefilter)
 * [C#](https://github.com/jonmat/FastIndex)
 
 
