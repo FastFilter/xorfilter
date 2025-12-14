@@ -64,10 +64,10 @@ type BinaryFuse8 struct {
 
 When constructing the filter, you should ensure that there are not too many  duplicate keys for best results.
 
-# Generic (8-bit, 16-bit, 32-bit)
+## Generic (8-bit, 16-bit, 32-bit)
 
 By default, we use 8-bit fingerprints which provide a 0.4% false positive rate. Some user might want to reduce
-this false positive rate at the expensive of more memory usage. For this purpose, we provide a generic type
+this false positive rate at the expense of more memory usage. For this purpose, we provide a generic type
 (`NewBinaryFuse[T]`). 
 
 ```Go
@@ -80,6 +80,18 @@ The 32-bit fingerprints are provided but not recommended. Most users will want t
 The Binary Fuse filters have memory usages of about 9 bits per key in the 8-bit case, 18 bits per key in the 16-bit case,
 for sufficiently large sets (hundreds of thousands of keys). There is more per-key memory usage when the set is smaller.
 
+## Memory reuse for repeated builds
+
+When building many filters, memory can be reused (reducing allocation and GC
+overhead) with a `BinaryFuseBuilder`:
+```Go
+var builder xorfilter.BinaryFuseBuilder
+for {
+    filter8, _ := BuildBinaryFuse[uint8](&builder, keys)
+    filter16, _ := BuildBinaryFuse[uint16](&builder, keys)
+    ...
+}
+```
 
 # Implementations of xor filters in other programming languages
 
