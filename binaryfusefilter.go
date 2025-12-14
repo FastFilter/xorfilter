@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 	"math/bits"
+	"unsafe"
 )
 
 type Unsigned interface {
@@ -20,26 +21,57 @@ type BinaryFuse[T Unsigned] struct {
 	Fingerprints []T
 }
 
-// NewBinaryFuse fills the filter with provided keys. For best results,
-// the caller should avoid having too many duplicated keys.
+// NewBinaryFuse creates a binary fuse filter with provided keys. For best
+// results, the caller should avoid having too many duplicated keys.
+//
+// The function can mutate the given keys slice to remove duplicates.
+//
 // The function may return an error if the set is empty.
 func NewBinaryFuse[T Unsigned](keys []uint64) (*BinaryFuse[T], error) {
+	var b BinaryFuseBuilder
+	filter, err := BuildBinaryFuse[T](&b, keys)
+	if err != nil {
+		return nil, err
+	}
+	return &filter, nil
+}
+
+// BinaryFuseBuilder can be used to reuse memory allocations across multiple
+// BinaryFuse builds.
+type BinaryFuseBuilder struct {
+	alone        reusableBuffer
+	t2hash       reusableBuffer
+	reverseOrder reusableBuffer
+	t2count      reusableBuffer
+	reverseH     reusableBuffer
+	startPos     reusableBuffer
+	fingerprints reusableBuffer
+}
+
+// BuildBinaryFuse creates a binary fuse filter with provided keys, reusing
+// buffers from the BinaryFuseBuilder if possible. For best results, the caller
+// should avoid having too many duplicated keys.
+//
+// The function can mutate the given keys slice to remove duplicates.
+//
+// The function may return an error if the set is empty.
+func BuildBinaryFuse[T Unsigned](b *BinaryFuseBuilder, keys []uint64) (BinaryFuse[T], error) {
 	size := uint32(len(keys))
-	filter := &BinaryFuse[T]{}
-	filter.initializeParameters(size)
+	var filter BinaryFuse[T]
+	filter.initializeParameters(b, size)
 	rngcounter := uint64(1)
 	filter.Seed = splitmix64(&rngcounter)
 	capacity := uint32(len(filter.Fingerprints))
 
-	alone := make([]uint32, capacity)
+	alone := reuseBuffer[uint32](&b.alone, int(capacity))
 	// the lowest 2 bits are the h index (0, 1, or 2)
 	// so we only have 6 bits for counting;
 	// but that's sufficient
-	t2count := make([]T, capacity)
-	reverseH := make([]T, size)
+	t2count := reuseBuffer[T](&b.t2count, int(capacity))
+	reverseH := reuseBuffer[T](&b.reverseH, int(size))
 
-	t2hash := make([]uint64, capacity)
-	reverseOrder := make([]uint64, size+1)
+	t2hash := reuseBuffer[uint64](&b.t2hash, int(capacity))
+	reverseOrder := reuseBuffer[uint64](&b.reverseOrder, int(size+1))
 	reverseOrder[size] = 1
 
 	// the array h0, h1, h2, h0, h1, h2
@@ -50,16 +82,16 @@ func NewBinaryFuse[T Unsigned](keys []uint64) (*BinaryFuse[T], error) {
 	for {
 		iterations += 1
 		if iterations > MaxIterations {
-			// The probability of this happening is lower than the
-			// the cosmic-ray probability (i.e., a cosmic ray corrupts your system).
-			return nil, errors.New("too many iterations")
+			// The probability of this happening is lower than the cosmic-ray
+			// probability (i.e., a cosmic ray corrupts your system).
+			return BinaryFuse[T]{}, errors.New("too many iterations")
 		}
 
 		blockBits := 1
 		for (1 << blockBits) < filter.SegmentCount {
 			blockBits += 1
 		}
-		startPos := make([]uint, 1<<blockBits)
+		startPos := reuseBuffer[uint](&b.startPos, 1<<blockBits)
 		for i := range startPos {
 			// important: we do not want i * size to overflow!!!
 			startPos[i] = uint((uint64(i) * uint64(size)) >> blockBits)
@@ -216,7 +248,7 @@ func NewBinaryFuse[T Unsigned](keys []uint64) (*BinaryFuse[T], error) {
 	return filter, nil
 }
 
-func (filter *BinaryFuse[T]) initializeParameters(size uint32) {
+func (filter *BinaryFuse[T]) initializeParameters(b *BinaryFuseBuilder, size uint32) {
 	arity := uint32(3)
 	filter.SegmentLength = calculateSegmentLength(arity, size)
 	if filter.SegmentLength > 262144 {
@@ -238,7 +270,7 @@ func (filter *BinaryFuse[T]) initializeParameters(size uint32) {
 	}
 	arrayLength = (filter.SegmentCount + arity - 1) * filter.SegmentLength
 	filter.SegmentCountLength = filter.SegmentCount * filter.SegmentLength
-	filter.Fingerprints = make([]T, arrayLength)
+	filter.Fingerprints = reuseBuffer[T](&b.fingerprints, int(arrayLength))
 }
 
 func (filter *BinaryFuse[T]) mod3(x T) T {
@@ -291,4 +323,31 @@ func calculateSizeFactor(arity uint32, size uint32) float64 {
 	} else {
 		return 2.0
 	}
+}
+
+// reusableBuffer allows reuse of a backing buffer to avoid allocations for
+// slices of integers.
+type reusableBuffer struct {
+	buf []uint64
+}
+
+type integer interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
+}
+
+// reuseBuffer returns an empty slice of the given size, reusing the last buffer
+// if possible.
+func reuseBuffer[T integer](b *reusableBuffer, size int) []T {
+	const sizeOfUint64 = 8
+	// Our backing buffer is a []uint64. Figure out how many uint64s we need
+	// to back a []T of the requested size.
+	bufSize := int((uintptr(size)*unsafe.Sizeof(T(0)) + sizeOfUint64 - 1) / sizeOfUint64)
+	if cap(b.buf) >= bufSize {
+		clear(b.buf[:bufSize])
+	} else {
+		// We need to allocate a new buffer. Increase by at least 25% to amortize
+		// allocations; this is what append() does for large enough slices.
+		b.buf = make([]uint64, max(bufSize, cap(b.buf)+cap(b.buf)/4))
+	}
+	return unsafe.Slice((*T)(unsafe.Pointer(unsafe.SliceData(b.buf))), size)
 }

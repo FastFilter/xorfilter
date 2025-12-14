@@ -99,7 +99,8 @@ func scanCount(Qi []keyindex, setsi []xorset) ([]keyindex, int) {
 	return Qi, QiSize
 }
 
-// The maximum  number of iterations allowed before the populate function returns an error
+// MaxIterations is the maximum number of iterations allowed before the populate
+// function returns an error.
 var MaxIterations = 1024
 
 // Populate fills the filter with provided keys. For best results,

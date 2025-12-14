@@ -3,10 +3,12 @@ package xorfilter
 import (
 	"fmt"
 	"math/rand/v2"
+	"slices"
 	"testing"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const NUM_KEYS = 1e6
@@ -329,7 +331,37 @@ func TestBinaryFuseN_Issue35(t *testing.T) {
 			if !e {
 				panic(i)
 			}
-
 		}
 	}
+}
+
+func TestBinaryFuseBuilder(t *testing.T) {
+	// Verify that repeated builds with the same builder create the exact same
+	// filter as using NewBinaryFuse.
+	var bld BinaryFuseBuilder
+	for i := 0; i < 100; i++ {
+		n := 1 + rand.IntN(1<<rand.IntN(20))
+		keys := make([]uint64, n)
+		for j := range keys {
+			keys[j] = rand.Uint64()
+		}
+		switch rand.IntN(3) {
+		case 0:
+			crossCheckFuseBuilder[uint8](t, &bld, keys)
+		case 1:
+			crossCheckFuseBuilder[uint16](t, &bld, keys)
+		case 2:
+			crossCheckFuseBuilder[uint32](t, &bld, keys)
+		}
+	}
+}
+
+func crossCheckFuseBuilder[T Unsigned](t *testing.T, bld *BinaryFuseBuilder, keys []uint64) {
+	t.Helper()
+	filter, err := BuildBinaryFuse[T](bld, slices.Clone(keys))
+	require.NoError(t, err)
+	expected, err := NewBinaryFuse[T](keys)
+	require.NoError(t, err)
+	_ = expected
+	require.Equal(t, *expected, filter)
 }
