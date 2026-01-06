@@ -259,16 +259,28 @@ var (
 	bogusbinary    *BinaryFuse[testType]
 )
 
-func BenchmarkBinaryFuseNPopulate1000000(b *testing.B) {
-	keys := make([]uint64, NUM_KEYS)
-	for i := range keys {
-		keys[i] = rand.Uint64()
-	}
+func BenchmarkBinaryFusePopulate(b *testing.B) {
+	for _, bits := range []int{8, 16} {
+		for _, numKeys := range []int{10_000, 100_000, 1_000_000} {
+			b.Run(fmt.Sprintf("%d/n=%d", bits, numKeys), func(b *testing.B) {
+				keys := make([]uint64, numKeys)
+				for i := range keys {
+					keys[i] = rand.Uint64()
+				}
 
-	b.ResetTimer()
+				b.ResetTimer()
+				b.ReportAllocs()
 
-	for n := 0; n < b.N; n++ {
-		bogusbinary, _ = NewBinaryFuse[testType](keys)
+				for n := 0; n < b.N; n++ {
+					if bits == 8 {
+						_, _ = NewBinaryFuse[uint8](keys)
+					} else {
+						_, _ = NewBinaryFuse[uint16](keys)
+					}
+				}
+				b.ReportMetric(float64(b.N*numKeys)/b.Elapsed().Seconds()/1e6, "MKeys/s")
+			})
+		}
 	}
 }
 
