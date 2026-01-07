@@ -90,6 +90,26 @@ func buildBinaryFuse[T Unsigned](b *BinaryFuseBuilder, keys []uint64) (_ BinaryF
 			// probability (i.e., a cosmic ray corrupts your system).
 			return BinaryFuse[T]{}, iterations, errors.New("too many iterations")
 		}
+		if size > 4 && size < 1_000_000 {
+			// The segment length is calculated using an empirical formula. For some
+			// sizes, the segment length is too large and leads to many iterations.
+			// Once every four iterations, use the previous segment length while
+			// keeping the same capacity. See TestBinaryFuseBoundarySizes.
+			switch iterations % 4 {
+			case 2:
+				// Switch to smaller segment size.
+				filter.SegmentLength /= 2
+				filter.SegmentLengthMask = filter.SegmentLength - 1
+				filter.SegmentCount = filter.SegmentCount*2 + 2
+				filter.SegmentCountLength = filter.SegmentCount * filter.SegmentLength
+			case 3:
+				// Restore the calculated segment size.
+				filter.SegmentLength *= 2
+				filter.SegmentLengthMask = filter.SegmentLength - 1
+				filter.SegmentCount = filter.SegmentCount/2 - 1
+				filter.SegmentCountLength = filter.SegmentCount * filter.SegmentLength
+			}
+		}
 
 		blockBits := 1
 		for (1 << blockBits) < filter.SegmentCount {
