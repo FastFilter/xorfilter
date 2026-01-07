@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"slices"
+	"sort"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/cespare/xxhash/v2"
@@ -376,4 +379,133 @@ func crossCheckFuseBuilder[T Unsigned](t *testing.T, bld *BinaryFuseBuilder, key
 	require.NoError(t, err)
 	_ = expected
 	require.Equal(t, *expected, filter)
+}
+
+// segmentLengthSizes contains represents the range of sizes [startSize, endSize] that
+// all get the same segmentLength.
+type segmentLengthSizes struct {
+	segmentLength     uint32
+	startSize         uint32
+	startSegmentCount uint32
+	endSize           uint32
+	endSegmentCount   uint32
+}
+
+var binaryFuseParamStableOnce struct {
+	once   sync.Once
+	result []segmentLengthSizes
+}
+
+const binaryFuseParamTableMaxSegmentSize = 16384
+
+func binaryFuseSegLenAndCnt(size uint32) (segLen uint32, segCnt uint32) {
+	var f BinaryFuse[uint8]
+	f.initializeParameters(&BinaryFuseBuilder{}, size)
+	return f.SegmentLength, f.SegmentCount
+}
+
+func binaryFuseParamsTable() []segmentLengthSizes {
+	binaryFuseParamStableOnce.once.Do(func() {
+		var table []segmentLengthSizes
+		size := uint32(1)
+		for {
+			segLen, segCnt := binaryFuseSegLenAndCnt(size)
+			if segLen > binaryFuseParamTableMaxSegmentSize {
+				break
+			}
+			// Find the first size that changes the segment length.
+			n := uint32(sort.Search(int(size*4), func(x int) bool {
+				l, _ := binaryFuseSegLenAndCnt(size + uint32(x))
+				return l != segLen
+			}))
+			_, endSegCnt := binaryFuseSegLenAndCnt(size + n - 1)
+			table = append(table, segmentLengthSizes{
+				segmentLength:     segLen,
+				startSize:         size,
+				startSegmentCount: segCnt,
+				endSize:           size + n - 1,
+				endSegmentCount:   endSegCnt,
+			})
+			size += n
+		}
+		binaryFuseParamStableOnce.result = table
+	})
+	return binaryFuseParamStableOnce.result
+}
+
+// TestBinaryFuseParams shows the segment count and size range for each segment
+// length. Used to verify any changes in parameter calculation.
+func TestBinaryFuseParams(t *testing.T) {
+	expected := `
+| SegLen | SegCnt range |    Size range     |
+|--------|--------------|-------------------|
+|      4 |    1 - 1     |       1 - 2       |
+|      8 |    1 - 1     |       3 - 8       |
+|     16 |    1 - 2     |       9 - 27      |
+|     32 |    1 - 3     |      28 - 91      |
+|     64 |    1 - 5     |      92 - 303     |
+|    128 |    2 - 9     |     304 - 1009    |
+|    256 |    4 - 16    |    1010 - 3361    |
+|    512 |    7 - 26    |    3362 - 11192   |
+|   1024 |   12 - 42    |   11193 - 37272   |
+|   2048 |   20 - 69    |   37273 - 124117  |
+|   4096 |   34 - 114   |  124118 - 413309  |
+|   8192 |   56 - 188   |  413310 - 1376321 |
+|  16384 |   93 - 313   | 1376322 - 4583149 |
+`
+
+	var out strings.Builder
+	fmt.Fprintf(&out, "| SegLen | SegCnt range |    Size range     |\n")
+	fmt.Fprintf(&out, "|--------|--------------|-------------------|\n")
+	for _, row := range binaryFuseParamsTable() {
+		fmt.Fprintf(&out, "| %6d | %4d - %-5d | %7d - %-7d |\n",
+			row.segmentLength,
+			row.startSegmentCount, row.endSegmentCount,
+			row.startSize, row.endSize,
+		)
+	}
+	str := out.String()
+	require.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(str))
+}
+
+func checkNumIterations(t *testing.T, size uint32) {
+	const numTrials = 20
+
+	keys := make([]uint64, size)
+	var totalIterations, maxIterations int
+	for range numTrials {
+		for i := range keys {
+			keys[i] = rand.Uint64()
+		}
+		var b BinaryFuseBuilder
+		filter, iterations, err := buildBinaryFuse[uint8](&b, keys)
+		require.NoError(t, err)
+		for range 100 {
+			require.True(t, filter.Contains(keys[rand.IntN(len(keys))]))
+		}
+		totalIterations += iterations
+		maxIterations = max(maxIterations, iterations)
+	}
+	t.Logf("size: %d  iterations: %.2f avg (%d max)", size, float64(totalIterations)/numTrials, maxIterations)
+}
+
+func TestBinaryFuseBoundarySizes(t *testing.T) {
+	// For each segment length, test the smallest and largest segment count. For a
+	// given segment count, we want to choose the largest size for that count
+	// (which has the least "slack" space).
+	for _, s := range binaryFuseParamsTable() {
+		if s.startSize > 1_000_000 {
+			// Larger sizes take too long to test.
+			break
+		}
+		if s.startSegmentCount != s.endSegmentCount {
+			// Find the first size that doesn't use the start segment count.
+			n := uint32(sort.Search(int(s.endSize-s.startSize+1), func(x int) bool {
+				l, c := binaryFuseSegLenAndCnt(s.startSize + uint32(x))
+				return l != s.segmentLength || c != s.startSegmentCount
+			}))
+			checkNumIterations(t, s.startSize+n-1)
+		}
+		checkNumIterations(t, s.endSize)
+	}
 }
