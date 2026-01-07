@@ -5,6 +5,11 @@ type Xor8 struct {
 	Seed         uint64
 	BlockLength  uint32
 	Fingerprints []uint8
+
+	// Portable, when true, ensures that multi-byte fields (Seed, BlockLength)
+	// are interpreted in little-endian byte order for cross-platform compatibility.
+	// For Xor8, Fingerprints are uint8 so they are unaffected by endianness.
+	Portable bool
 }
 
 type xorset struct {

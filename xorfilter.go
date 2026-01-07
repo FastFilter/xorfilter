@@ -279,6 +279,20 @@ func Populate(keys []uint64) (*Xor8, error) {
 	return filter, nil
 }
 
+// PopulatePortable fills the filter with provided keys and sets Portable=true
+// for cross-platform compatibility. For Xor8, fingerprints are uint8 so they
+// are unaffected by endianness, but the Portable flag signals that the filter
+// was created with portability in mind.
+// The function may return an error if the set is empty.
+func PopulatePortable(keys []uint64) (*Xor8, error) {
+	filter, err := Populate(keys)
+	if err != nil {
+		return nil, err
+	}
+	filter.Portable = true
+	return filter, nil
+}
+
 func pruneDuplicates(array []uint64) []uint64 {
 	slices.Sort(array)
 	pos := 0

@@ -1,11 +1,78 @@
 package xorfilter
 
 import (
+	"encoding/binary"
 	"errors"
 	"math"
 	"math/bits"
 	"unsafe"
 )
+
+// isBigEndian returns true if the host CPU uses big-endian byte order.
+func isBigEndian() bool {
+	var x uint16 = 0x0102
+	return *(*byte)(unsafe.Pointer(&x)) == 0x01
+}
+
+// forceLEUint16 converts a uint16 slice to little-endian byte order in place.
+// On little-endian systems, this is a no-op.
+func forceLEUint16(data []uint16) {
+	if !isBigEndian() {
+		return
+	}
+	for i := range data {
+		// Swap bytes: convert from big-endian to little-endian
+		data[i] = (data[i] << 8) | (data[i] >> 8)
+	}
+}
+
+// forceLEUint32 converts a uint32 slice to little-endian byte order in place.
+// On little-endian systems, this is a no-op.
+func forceLEUint32(data []uint32) {
+	if !isBigEndian() {
+		return
+	}
+	for i := range data {
+		data[i] = binary.LittleEndian.Uint32((*[4]byte)(unsafe.Pointer(&data[i]))[:])
+	}
+}
+
+// forceLE converts a slice of unsigned integers to little-endian byte order in place.
+// On little-endian systems, this is a no-op. For uint8, this is always a no-op.
+func forceLE[T Unsigned](data []T) {
+	if !isBigEndian() {
+		return
+	}
+	var zero T
+	switch any(zero).(type) {
+	case uint8:
+		// No conversion needed for single bytes
+	case uint16:
+		forceLEUint16(*(*[]uint16)(unsafe.Pointer(&data)))
+	case uint32:
+		forceLEUint32(*(*[]uint32)(unsafe.Pointer(&data)))
+	}
+}
+
+// fromLE converts a single value from little-endian storage to native byte order.
+// On little-endian systems, this is a no-op. For uint8, this is always a no-op.
+func fromLE[T Unsigned](v T) T {
+	if !isBigEndian() {
+		return v
+	}
+	var zero T
+	switch any(zero).(type) {
+	case uint8:
+		return v
+	case uint16:
+		u := uint16(v)
+		return T((u << 8) | (u >> 8))
+	case uint32:
+		u := uint32(v)
+		return T(binary.LittleEndian.Uint32((*[4]byte)(unsafe.Pointer(&u))[:]))
+	}
+	return v
+}
 
 type Unsigned interface {
 	~uint8 | ~uint16 | ~uint32
@@ -19,6 +86,12 @@ type BinaryFuse[T Unsigned] struct {
 	SegmentCountLength uint32
 
 	Fingerprints []T
+
+	// Portable, when true, ensures that Fingerprints are stored in little-endian
+	// byte order regardless of the host CPU's native endianness. This allows
+	// filters to be serialized and shared across different architectures.
+	// Only affects uint16 and uint32 fingerprint types; uint8 is unaffected.
+	Portable bool
 }
 
 // NewBinaryFuse creates a binary fuse filter with provided keys. For best
@@ -30,6 +103,18 @@ type BinaryFuse[T Unsigned] struct {
 func NewBinaryFuse[T Unsigned](keys []uint64) (*BinaryFuse[T], error) {
 	var b BinaryFuseBuilder
 	filter, err := BuildBinaryFuse[T](&b, keys)
+	if err != nil {
+		return nil, err
+	}
+	return &filter, nil
+}
+
+// NewBinaryFusePortable creates a binary fuse filter with Portable=true,
+// ensuring fingerprints are stored in little-endian byte order for
+// cross-platform compatibility. See NewBinaryFuse for more details.
+func NewBinaryFusePortable[T Unsigned](keys []uint64) (*BinaryFuse[T], error) {
+	var b BinaryFuseBuilder
+	filter, err := BuildBinaryFusePortable[T](&b, keys)
 	if err != nil {
 		return nil, err
 	}
@@ -248,6 +333,19 @@ func BuildBinaryFuse[T Unsigned](b *BinaryFuseBuilder, keys []uint64) (BinaryFus
 	return filter, nil
 }
 
+// BuildBinaryFusePortable creates a binary fuse filter with Portable=true,
+// ensuring fingerprints are stored in little-endian byte order for
+// cross-platform compatibility. See BuildBinaryFuse for more details.
+func BuildBinaryFusePortable[T Unsigned](b *BinaryFuseBuilder, keys []uint64) (BinaryFuse[T], error) {
+	filter, err := BuildBinaryFuse[T](b, keys)
+	if err != nil {
+		return filter, err
+	}
+	filter.Portable = true
+	forceLE(filter.Fingerprints)
+	return filter, nil
+}
+
 func (filter *BinaryFuse[T]) initializeParameters(b *BinaryFuseBuilder, size uint32) {
 	arity := uint32(3)
 	filter.SegmentLength = calculateSegmentLength(arity, size)
@@ -296,7 +394,11 @@ func (filter *BinaryFuse[T]) Contains(key uint64) bool {
 	hash := mixsplit(key, filter.Seed)
 	f := T(fingerprint(hash))
 	h0, h1, h2 := filter.getHashFromHash(hash)
-	f ^= filter.Fingerprints[h0] ^ filter.Fingerprints[h1] ^ filter.Fingerprints[h2]
+	if filter.Portable {
+		f ^= fromLE(filter.Fingerprints[h0]) ^ fromLE(filter.Fingerprints[h1]) ^ fromLE(filter.Fingerprints[h2])
+	} else {
+		f ^= filter.Fingerprints[h0] ^ filter.Fingerprints[h1] ^ filter.Fingerprints[h2]
+	}
 	return f == 0
 }
 

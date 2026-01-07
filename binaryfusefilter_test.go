@@ -377,3 +377,176 @@ func crossCheckFuseBuilder[T Unsigned](t *testing.T, bld *BinaryFuseBuilder, key
 	_ = expected
 	require.Equal(t, *expected, filter)
 }
+
+func TestBinaryFusePortableBasic(t *testing.T) {
+	keys := make([]uint64, NUM_KEYS)
+	for i := range keys {
+		keys[i] = rand.Uint64()
+	}
+	filter, err := NewBinaryFusePortable[testType](keys)
+	require.NoError(t, err)
+	assert.True(t, filter.Portable)
+
+	for _, v := range keys {
+		assert.True(t, filter.Contains(v), "key %d should be in filter", v)
+	}
+
+	// Test false positive rate
+	falsesize := 1000000
+	matches := 0
+	for i := 0; i < falsesize; i++ {
+		v := rand.Uint64()
+		if filter.Contains(v) {
+			matches++
+		}
+	}
+	fpp := float64(matches) * 100.0 / float64(falsesize)
+	assert.Less(t, fpp, 1.0, "false positive rate should be less than 1%%")
+}
+
+func TestBinaryFusePortable_AllTypes(t *testing.T) {
+	keys := make([]uint64, 10000)
+	for i := range keys {
+		keys[i] = rand.Uint64()
+	}
+
+	t.Run("uint8", func(t *testing.T) {
+		filter, err := NewBinaryFusePortable[uint8](keys)
+		require.NoError(t, err)
+		assert.True(t, filter.Portable)
+		for _, v := range keys {
+			assert.True(t, filter.Contains(v))
+		}
+	})
+
+	t.Run("uint16", func(t *testing.T) {
+		filter, err := NewBinaryFusePortable[uint16](keys)
+		require.NoError(t, err)
+		assert.True(t, filter.Portable)
+		for _, v := range keys {
+			assert.True(t, filter.Contains(v))
+		}
+	})
+
+	t.Run("uint32", func(t *testing.T) {
+		filter, err := NewBinaryFusePortable[uint32](keys)
+		require.NoError(t, err)
+		assert.True(t, filter.Portable)
+		for _, v := range keys {
+			assert.True(t, filter.Contains(v))
+		}
+	})
+}
+
+func TestBinaryFusePortableBuilder(t *testing.T) {
+	var bld BinaryFuseBuilder
+	for i := 0; i < 50; i++ {
+		n := 1 + rand.IntN(1<<rand.IntN(16))
+		keys := make([]uint64, n)
+		for j := range keys {
+			keys[j] = rand.Uint64()
+		}
+		switch rand.IntN(3) {
+		case 0:
+			crossCheckPortableFuseBuilder[uint8](t, &bld, keys)
+		case 1:
+			crossCheckPortableFuseBuilder[uint16](t, &bld, keys)
+		case 2:
+			crossCheckPortableFuseBuilder[uint32](t, &bld, keys)
+		}
+	}
+}
+
+func crossCheckPortableFuseBuilder[T Unsigned](t *testing.T, bld *BinaryFuseBuilder, keys []uint64) {
+	t.Helper()
+	filter, err := BuildBinaryFusePortable[T](bld, slices.Clone(keys))
+	require.NoError(t, err)
+	assert.True(t, filter.Portable)
+
+	// Verify all keys are found
+	for _, v := range keys {
+		assert.True(t, filter.Contains(v), "key %d should be in portable filter", v)
+	}
+}
+
+func TestBinaryFuse8Portable(t *testing.T) {
+	keys := make([]uint64, 10000)
+	for i := range keys {
+		keys[i] = rand.Uint64()
+	}
+
+	filter, err := PopulateBinaryFuse8Portable(keys)
+	require.NoError(t, err)
+	assert.True(t, filter.Portable)
+
+	for _, v := range keys {
+		assert.True(t, filter.Contains(v))
+	}
+}
+
+func TestBinaryFusePortable_SameResultsAsNonPortable(t *testing.T) {
+	// On little-endian systems (most common), portable and non-portable
+	// filters should produce identical fingerprints
+	keys := make([]uint64, 1000)
+	for i := range keys {
+		keys[i] = rand.Uint64()
+	}
+
+	// For uint8, fingerprints should always be identical regardless of endianness
+	t.Run("uint8_fingerprints_match", func(t *testing.T) {
+		regular, err := NewBinaryFuse[uint8](slices.Clone(keys))
+		require.NoError(t, err)
+		portable, err := NewBinaryFusePortable[uint8](slices.Clone(keys))
+		require.NoError(t, err)
+
+		// Fingerprints should be identical for uint8
+		assert.Equal(t, regular.Fingerprints, portable.Fingerprints)
+		assert.Equal(t, regular.Seed, portable.Seed)
+	})
+
+	// Both should find all keys
+	t.Run("both_find_all_keys", func(t *testing.T) {
+		for _, bits := range []string{"uint8", "uint16", "uint32"} {
+			t.Run(bits, func(t *testing.T) {
+				var regularFound, portableFound int
+				switch bits {
+				case "uint8":
+					regular, _ := NewBinaryFuse[uint8](slices.Clone(keys))
+					portable, _ := NewBinaryFusePortable[uint8](slices.Clone(keys))
+					for _, k := range keys {
+						if regular.Contains(k) {
+							regularFound++
+						}
+						if portable.Contains(k) {
+							portableFound++
+						}
+					}
+				case "uint16":
+					regular, _ := NewBinaryFuse[uint16](slices.Clone(keys))
+					portable, _ := NewBinaryFusePortable[uint16](slices.Clone(keys))
+					for _, k := range keys {
+						if regular.Contains(k) {
+							regularFound++
+						}
+						if portable.Contains(k) {
+							portableFound++
+						}
+					}
+				case "uint32":
+					regular, _ := NewBinaryFuse[uint32](slices.Clone(keys))
+					portable, _ := NewBinaryFusePortable[uint32](slices.Clone(keys))
+					for _, k := range keys {
+						if regular.Contains(k) {
+							regularFound++
+						}
+						if portable.Contains(k) {
+							portableFound++
+						}
+					}
+				}
+				assert.Equal(t, len(keys), regularFound)
+				assert.Equal(t, len(keys), portableFound)
+			})
+		}
+	})
+}

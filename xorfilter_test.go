@@ -218,3 +218,60 @@ func Test_Issue35_basic(t *testing.T) {
 		}
 	}
 }
+
+func TestXor8Portable(t *testing.T) {
+	keys := make([]uint64, NUM_KEYS)
+	for i := range keys {
+		keys[i] = splitmix64(&rng)
+	}
+	filter, err := PopulatePortable(keys)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	assert.True(t, filter.Portable)
+
+	for _, v := range keys {
+		assert.True(t, filter.Contains(v), "key %d should be in filter", v)
+	}
+
+	// Test false positive rate
+	falsesize := 1000000
+	matches := 0
+	for i := 0; i < falsesize; i++ {
+		v := splitmix64(&rng)
+		if filter.Contains(v) {
+			matches++
+		}
+	}
+	fpp := float64(matches) * 100.0 / float64(falsesize)
+	assert.Less(t, fpp, 1.0, "false positive rate should be less than 1%%")
+}
+
+func TestXor8Portable_SameAsNonPortable(t *testing.T) {
+	// For Xor8, fingerprints are uint8 so portable and non-portable
+	// should produce identical results
+	keys := make([]uint64, 10000)
+	rngState := uint64(12345)
+	for i := range keys {
+		keys[i] = splitmix64(&rngState)
+	}
+
+	regular, err := Populate(keys)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	portable, err := PopulatePortable(keys)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	assert.False(t, regular.Portable)
+	assert.True(t, portable.Portable)
+
+	// Both should find all keys
+	for _, k := range keys {
+		assert.True(t, regular.Contains(k))
+		assert.True(t, portable.Contains(k))
+	}
+}
