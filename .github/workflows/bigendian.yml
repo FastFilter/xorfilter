@@ -1,0 +1,26 @@
+
+name: Go-PPC64-CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        go-version: [1.24.x]
+        platform: [ubuntu-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Install
+      run: |
+        sudo apt-get update
+        sudo apt install -y qemu-system-ppc64 qemu-user
+    - name: Test
+      run: |
+        GOARCH=ppc64 go test ./...

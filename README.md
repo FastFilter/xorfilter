@@ -49,18 +49,15 @@ An xor filter is immutable, it is concurrent. The expectation is that you build 
 
 Though the filter itself does not use much memory, the construction of the filter needs many bytes of memory per set entry.
 
-For persistence, you only need to serialize the following data structure:
+For persistence, you can use `Save` and `LoadBinaryFuse8`. It is uses a portable format over different systems (little/big endian).
 
 ```Go
-type BinaryFuse8 struct {
-	Seed               uint64
-	SegmentLength      uint32
-	SegmentLengthMask  uint32
-	SegmentCount       uint32
-	SegmentCountLength uint32
-	Fingerprints []uint8
-}
+errsave := filter.Save(...)
+//...
+filter, errload := LoadBinaryFuse8(&buf)
 ```
+
+Note that it is a direct binary save/restore. There is not data integrity check: loading from corrupted sources might result in runtime errors. We recommend that you use hash codes for integrity checks.
 
 When constructing the filter, you should ensure that there are not too many  duplicate keys for best results.
 
@@ -75,6 +72,9 @@ filter8, _ := xorfilter.NewBinaryFuse[uint8](keys) // 0.39% false positive rate,
 filter16, _ := xorfilter.NewBinaryFuse[uint16](keys) // 0.0015% false positive rate, uses about 18 bits per key
 filter32, _ := xorfilter.NewBinaryFuse[uint32](keys) // 2e-08% false positive rate, uses about 36 bits per key
 ```
+
+You can similarly save or load the data with `Save` and `LoadBinaryFuse[uint16](...)`.
+
 The 32-bit fingerprints are provided but not recommended. Most users will want to use either the 8-bit or 16-bit fingerprints.
 
 The Binary Fuse filters have memory usages of about 9 bits per key in the 8-bit case, 18 bits per key in the 16-bit case,
