@@ -72,8 +72,8 @@ func buildBinaryFuse[T Unsigned](b *BinaryFuseBuilder, keys []uint64) (_ BinaryF
 	// the lowest 2 bits are the h index (0, 1, or 2)
 	// so we only have 6 bits for counting;
 	// but that's sufficient
-	t2count := reuseBuffer[T](&b.t2count, int(capacity))
-	reverseH := reuseBuffer[T](&b.reverseH, int(size))
+	t2count := reuseBuffer[uint8](&b.t2count, int(capacity))
+	reverseH := reuseBuffer[uint8](&b.reverseH, int(size))
 
 	t2hash := reuseBuffer[uint64](&b.t2hash, int(capacity))
 	reverseOrder := reuseBuffer[uint64](&b.reverseOrder, int(size+1))
@@ -297,7 +297,7 @@ func (filter *BinaryFuse[T]) initializeParameters(b *BinaryFuseBuilder, size uin
 	filter.Fingerprints = reuseBuffer[T](&b.fingerprints, int(arrayLength))
 }
 
-func (filter *BinaryFuse[T]) mod3(x T) T {
+func (filter *BinaryFuse[T]) mod3(x uint8) uint8 {
 	if x > 2 {
 		x -= 3
 	}
