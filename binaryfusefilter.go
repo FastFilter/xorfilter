@@ -112,10 +112,6 @@ func buildBinaryFuse[T Unsigned](b *BinaryFuseBuilder, keys []uint64) (_ BinaryF
 	reverseOrder := reuseBuffer(&b.reverseOrder, size+1)
 	reverseOrder[size] = 1
 
-	// the array h0, h1, h2, h0, h1, h2
-	var h012 [6]uint32
-	// this could be used to compute the mod3
-	// tabmod3 := [5]uint8{0,1,2,0,1}
 	for {
 		iterations += 1
 		if iterations > MaxIterations {
@@ -227,6 +223,9 @@ func buildBinaryFuse[T Unsigned](b *BinaryFuseBuilder, keys []uint64) (_ BinaryF
 			}
 		}
 		stacksize := uint32(0)
+		segLen := filter.SegmentLength
+		// segLenToMinusSegLenX2 is used to change segLen to -2*segLen via XOR.
+		segLenToMinusSegLenX2 := segLen ^ (-(2 * segLen))
 		for Qsize > 0 {
 			Qsize--
 			index := alone[Qsize]
@@ -237,29 +236,63 @@ func buildBinaryFuse[T Unsigned](b *BinaryFuseBuilder, keys []uint64) (_ BinaryF
 				reverseOrder[stacksize] = hash
 				stacksize++
 
-				index1, index2, index3 := filter.getHashFromHash(hash)
+				// Here, we could use filter.getHashFromHash(hash) to obtain the other
+				// two indexes. But we can manipulate the formulas to derive them more
+				// efficiently. We use bit tricks to avoid branching.
 
-				h012[1] = index2
-				h012[2] = index3
-				h012[3] = index1
-				h012[4] = h012[1]
+				h01 := uint32(hash>>18) & filter.SegmentLengthMask
+				h02 := uint32(hash) & filter.SegmentLengthMask
 
-				other_index1 := h012[found+1]
+				// These variables are either 0 or all 1s.
+				is0 := -uint32((found - 1) >> 7) // all 1s if found==0 (relies on uint8 wrap)
+				is1 := -uint32(found & 1)        // all 1s if found==1
+				is2 := -uint32(found >> 1)       // all 1s if found==2
+
+				// First, adjust the segment index. other_index1 is:
+				//  if found<2: index + segLen
+				//  if found=2: index - segLen*2
+				other_index1 := index + (segLen ^ (segLenToMinusSegLenX2 & is2))
+				// other_index2 is:
+				//  if found>0: index - segLen
+				//  if found=0: index + 2*segLen
+				other_index2 := index - (segLen ^ (segLenToMinusSegLenX2 & is0))
+
+				// Now adjust the offset inside the segment.
+				// Three cases:
+				//   0: other_index1 ^= h01      other_index2 ^= h02
+				//   1: other_index1 ^= h01^h02  other_index2 ^= h01
+				//   2: other_index1 ^= h02      other_index2 ^= h01^h02
+				other_index1 ^= (h01 &^ is2) ^ (h02 &^ is0)
+				other_index2 ^= (h01 &^ is0) ^ (h02 &^ is1)
+
+				f1 := uint8(is0&1 | is1&2) // f1 = (found + 1) % 3
+				f2 := uint8(is0&2 | is2&1) // f2 = (found + 2) % 3
+
+				// Verification. Turn on for debugging.
+				if false {
+					index1, index2, index3 := filter.getHashFromHash(hash)
+					if other_index1 != []uint32{index1, index2, index3}[(found+1)%3] {
+						panic("incorrect other_index1")
+					}
+					if other_index2 != []uint32{index1, index2, index3}[(found+2)%3] {
+						panic("incorrect other_index2")
+					}
+				}
+
 				alone[Qsize] = other_index1
 				if (t2count[other_index1] >> 2) == 2 {
 					Qsize++
 				}
 				t2count[other_index1] -= 4
-				t2count[other_index1] ^= filter.mod3(found + 1) // could use this instead: tabmod3[found+1]
+				t2count[other_index1] ^= f1
 				t2hash[other_index1] ^= hash
 
-				other_index2 := h012[found+2]
 				alone[Qsize] = other_index2
 				if (t2count[other_index2] >> 2) == 2 {
 					Qsize++
 				}
 				t2count[other_index2] -= 4
-				t2count[other_index2] ^= filter.mod3(found + 2) // could use this instead: tabmod3[found+2]
+				t2count[other_index2] ^= f2
 				t2hash[other_index2] ^= hash
 			}
 		}
@@ -288,6 +321,7 @@ func buildBinaryFuse[T Unsigned](b *BinaryFuseBuilder, keys []uint64) (_ BinaryF
 		return filter, iterations, nil
 	}
 
+	var h012 [5]uint32
 	for i := int(size - 1); i >= 0; i-- {
 		// the hash of the key we insert next
 		hash := reverseOrder[i]
@@ -331,14 +365,6 @@ func (filter *BinaryFuse[T]) initializeParameters(b *BinaryFuseBuilder, size uin
 	bufSize := (numFingerprints*uint32(unsafe.Sizeof(T(0))) + 3) / 4
 	buf := reuseBuffer(&b.fingerprints, bufSize)
 	filter.Fingerprints = unsafe.Slice((*T)(unsafe.Pointer(unsafe.SliceData(buf))), numFingerprints)
-}
-
-func (filter *BinaryFuse[T]) mod3(x uint8) uint8 {
-	if x > 2 {
-		x -= 3
-	}
-
-	return x
 }
 
 func (filter *BinaryFuse[T]) getHashFromHash(hash uint64) (uint32, uint32, uint32) {
