@@ -206,12 +206,12 @@ func buildBinaryFuse[T Unsigned](b *BinaryFuseBuilder, keys []uint64) (_ BinaryF
 
 				index1, index2, index3 := filter.getHashFromHash(hash)
 
-				h012[1] = index2
-				h012[2] = index3
-				h012[3] = index1
-				h012[4] = h012[1]
+				// We set h012[i] = []uint32{index1, index2, index3}[(found+1)%3]
+				h012[0] = index2
+				h012[1] = index3
+				h012[2] = index1
 
-				other_index1 := h012[found+1]
+				other_index1 := h012[found]
 				alone[Qsize] = other_index1
 				if (t2count[other_index1] >> 2) == 2 {
 					Qsize++
@@ -220,7 +220,7 @@ func buildBinaryFuse[T Unsigned](b *BinaryFuseBuilder, keys []uint64) (_ BinaryF
 				t2count[other_index1] ^= filter.mod3(found + 1) // could use this instead: tabmod3[found+1]
 				t2hash[other_index1] ^= hash
 
-				other_index2 := h012[found+2]
+				other_index2 := index1 ^ index2 ^ index3 ^ index ^ other_index1
 				alone[Qsize] = other_index2
 				if (t2count[other_index2] >> 2) == 2 {
 					Qsize++
