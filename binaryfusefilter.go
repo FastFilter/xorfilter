@@ -52,6 +52,9 @@ type BinaryFuseBuilder struct {
 // buffers from the BinaryFuseBuilder if possible. For best results, the caller
 // should avoid having too many duplicated keys.
 //
+// The Fingerprints slice in the resulting filter is owned by the builder; it
+// is only valid until the BinaryFuseBuilder is used again.
+//
 // The function can mutate the given keys slice to remove duplicates.
 //
 // The function may return an error if the set is empty.
@@ -279,22 +282,18 @@ func (filter *BinaryFuse[T]) initializeParameters(b *BinaryFuseBuilder, size uin
 		filter.SegmentLength = 262144
 	}
 	filter.SegmentLengthMask = filter.SegmentLength - 1
-	sizeFactor := calculateSizeFactor(arity, size)
 	capacity := uint32(0)
 	if size > 1 {
+		sizeFactor := calculateSizeFactor(arity, size)
 		capacity = uint32(math.Round(float64(size) * sizeFactor))
 	}
-	initSegmentCount := (capacity+filter.SegmentLength-1)/filter.SegmentLength - (arity - 1)
-	arrayLength := (initSegmentCount + arity - 1) * filter.SegmentLength
-	filter.SegmentCount = (arrayLength + filter.SegmentLength - 1) / filter.SegmentLength
-	if filter.SegmentCount <= arity-1 {
-		filter.SegmentCount = 1
-	} else {
-		filter.SegmentCount = filter.SegmentCount - (arity - 1)
+	totalSegmentCount := (capacity + filter.SegmentLength - 1) / filter.SegmentLength
+	if totalSegmentCount < arity {
+		totalSegmentCount = arity
 	}
-	arrayLength = (filter.SegmentCount + arity - 1) * filter.SegmentLength
+	filter.SegmentCount = totalSegmentCount - (arity - 1)
 	filter.SegmentCountLength = filter.SegmentCount * filter.SegmentLength
-	filter.Fingerprints = reuseBuffer[T](&b.fingerprints, int(arrayLength))
+	filter.Fingerprints = reuseBuffer[T](&b.fingerprints, int(totalSegmentCount*filter.SegmentLength))
 }
 
 func (filter *BinaryFuse[T]) mod3(x uint8) uint8 {
