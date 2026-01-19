@@ -86,10 +86,10 @@ When building many filters, memory can be reused (reducing allocation and GC
 overhead) with a `BinaryFuseBuilder`:
 ```Go
 var builder xorfilter.BinaryFuseBuilder
+builder = xorfilter.MakeBinaryFuseBuilder[uint16](initialSize)  // Optional
 for {
-    filter8, _ := BuildBinaryFuse[uint8](&builder, keys)
-    filter16, _ := BuildBinaryFuse[uint16](&builder, keys)
-    ...
+  filter16, _ := BuildBinaryFuse[uint16](&builder, keys)
+  ...
 }
 ```
 
