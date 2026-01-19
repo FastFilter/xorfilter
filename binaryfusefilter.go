@@ -38,14 +38,44 @@ func NewBinaryFuse[T Unsigned](keys []uint64) (*BinaryFuse[T], error) {
 
 // BinaryFuseBuilder can be used to reuse memory allocations across multiple
 // BinaryFuse builds.
+//
+// An empty BinaryFuseBuilder can be used, and its internal memory will grow as
+// needed over time. MakeBinaryFuseBuilder can also be used to pre-initialize
+// for a certain size.
 type BinaryFuseBuilder struct {
-	alone        reusableBuffer
-	t2hash       reusableBuffer
-	reverseOrder reusableBuffer
-	t2count      reusableBuffer
-	reverseH     reusableBuffer
-	startPos     reusableBuffer
-	fingerprints reusableBuffer
+	alone        []uint32
+	t2hash       []uint64
+	reverseOrder []uint64
+	t2count      []uint8
+	reverseH     []uint8
+	startPos     []uint32
+	fingerprints []uint32
+}
+
+// MakeBinaryFuseBuilder creates a BinaryFuseBuilder with enough preallocated
+// memory to allow building of binary fuse filters with fingerprint type T
+// without allocations.
+//
+// Note that the builder can be used with a smaller fingerprint type without
+// reallocations. If it is used with a larger fingerprint type, there will be
+// one reallocation for the fingerprints slice.
+func MakeBinaryFuseBuilder[T Unsigned](initialSize int) BinaryFuseBuilder {
+	var b BinaryFuseBuilder
+	var filter BinaryFuse[T]
+	size := uint32(initialSize)
+	filter.initializeParameters(&b, size)
+	capacity := uint32(len(filter.Fingerprints))
+	reuseBuffer(&b.alone, capacity)
+	reuseBuffer(&b.t2count, capacity)
+	reuseBuffer(&b.reverseH, size)
+
+	reuseBuffer(&b.t2hash, capacity)
+	reuseBuffer(&b.reverseOrder, size+1)
+	// The startPos array needs to be large enough for smaller sizes which use a
+	// smaller segment length. Also, we dynamically try a smaller segment length
+	// in some cases.
+	reuseBuffer(&b.startPos, 2<<bits.Len32(filter.SegmentCount+1))
+	return b
 }
 
 // BuildBinaryFuse creates a binary fuse filter with provided keys, reusing
@@ -71,15 +101,15 @@ func buildBinaryFuse[T Unsigned](b *BinaryFuseBuilder, keys []uint64) (_ BinaryF
 	filter.Seed = splitmix64(&rngcounter)
 	capacity := uint32(len(filter.Fingerprints))
 
-	alone := reuseBuffer[uint32](&b.alone, int(capacity))
+	alone := reuseBuffer(&b.alone, capacity)
 	// the lowest 2 bits are the h index (0, 1, or 2)
 	// so we only have 6 bits for counting;
 	// but that's sufficient
-	t2count := reuseBuffer[uint8](&b.t2count, int(capacity))
-	reverseH := reuseBuffer[uint8](&b.reverseH, int(size))
+	t2count := reuseBuffer(&b.t2count, capacity)
+	reverseH := reuseBuffer(&b.reverseH, size)
 
-	t2hash := reuseBuffer[uint64](&b.t2hash, int(capacity))
-	reverseOrder := reuseBuffer[uint64](&b.reverseOrder, int(size+1))
+	t2hash := reuseBuffer(&b.t2hash, capacity)
+	reverseOrder := reuseBuffer(&b.reverseOrder, size+1)
 	reverseOrder[size] = 1
 
 	// the array h0, h1, h2, h0, h1, h2
@@ -118,10 +148,10 @@ func buildBinaryFuse[T Unsigned](b *BinaryFuseBuilder, keys []uint64) (_ BinaryF
 		for (1 << blockBits) < filter.SegmentCount {
 			blockBits += 1
 		}
-		startPos := reuseBuffer[uint](&b.startPos, 1<<blockBits)
+		startPos := reuseBuffer(&b.startPos, 1<<blockBits)
 		for i := range startPos {
 			// important: we do not want i * size to overflow!!!
-			startPos[i] = uint((uint64(i) * uint64(size)) >> blockBits)
+			startPos[i] = uint32((uint64(i) * uint64(size)) >> blockBits)
 		}
 		for _, key := range keys {
 			hash := mixsplit(key, filter.Seed)
@@ -293,7 +323,14 @@ func (filter *BinaryFuse[T]) initializeParameters(b *BinaryFuseBuilder, size uin
 	}
 	filter.SegmentCount = totalSegmentCount - (arity - 1)
 	filter.SegmentCountLength = filter.SegmentCount * filter.SegmentLength
-	filter.Fingerprints = reuseBuffer[T](&b.fingerprints, int(totalSegmentCount*filter.SegmentLength))
+
+	// Allocate fingerprints slice.
+	numFingerprints := totalSegmentCount * filter.SegmentLength
+	// Our backing buffer is a []uint32. Figure out how many uint32s we need
+	// to back a []T of the requested size.
+	bufSize := (numFingerprints*uint32(unsafe.Sizeof(T(0))) + 3) / 4
+	buf := reuseBuffer(&b.fingerprints, bufSize)
+	filter.Fingerprints = unsafe.Slice((*T)(unsafe.Pointer(unsafe.SliceData(buf))), numFingerprints)
 }
 
 func (filter *BinaryFuse[T]) mod3(x uint8) uint8 {
@@ -348,29 +385,11 @@ func calculateSizeFactor(arity uint32, size uint32) float64 {
 	}
 }
 
-// reusableBuffer allows reuse of a backing buffer to avoid allocations for
-// slices of integers.
-type reusableBuffer struct {
-	buf []uint64
-}
-
-type integer interface {
-	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
-}
-
-// reuseBuffer returns an empty slice of the given size, reusing the last buffer
-// if possible.
-func reuseBuffer[T integer](b *reusableBuffer, size int) []T {
-	const sizeOfUint64 = 8
-	// Our backing buffer is a []uint64. Figure out how many uint64s we need
-	// to back a []T of the requested size.
-	bufSize := int((uintptr(size)*unsafe.Sizeof(T(0)) + sizeOfUint64 - 1) / sizeOfUint64)
-	if cap(b.buf) >= bufSize {
-		clear(b.buf[:bufSize])
-	} else {
-		// We need to allocate a new buffer. Increase by at least 25% to amortize
-		// allocations; this is what append() does for large enough slices.
-		b.buf = make([]uint64, max(bufSize, cap(b.buf)+cap(b.buf)/4))
-	}
-	return unsafe.Slice((*T)(unsafe.Pointer(unsafe.SliceData(b.buf))), size)
+// reuseBuffer returns a zeroed slice of the given size, reusing the previous
+// one if possible.
+func reuseBuffer[T uint8 | uint32 | uint64](buf *[]T, size uint32) []T {
+	// The compiler recognizes this pattern and doesn't allocate a temporary
+	// slice. This pattern is used in slices.Grow().
+	*buf = append((*buf)[:0], make([]T, size)...)
+	return *buf
 }

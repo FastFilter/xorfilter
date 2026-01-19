@@ -350,10 +350,22 @@ func TestBinaryFuseN_Issue35(t *testing.T) {
 	}
 }
 
+// TestBinaryFuseBuilder verifies that repeated builds with the same builder
+// create the exact same filter as using NewBinaryFuse.
 func TestBinaryFuseBuilder(t *testing.T) {
-	// Verify that repeated builds with the same builder create the exact same
-	// filter as using NewBinaryFuse.
 	var bld BinaryFuseBuilder
+	// Test with and without pre-allocation.
+	if rand.IntN(2) == 0 {
+		maxSize := 1 + rand.IntN(1<<rand.IntN(20))
+		switch rand.IntN(3) {
+		case 0:
+			bld = MakeBinaryFuseBuilder[uint8](maxSize)
+		case 1:
+			bld = MakeBinaryFuseBuilder[uint16](maxSize)
+		case 2:
+			bld = MakeBinaryFuseBuilder[uint32](maxSize)
+		}
+	}
 	for i := 0; i < 100; i++ {
 		n := 1 + rand.IntN(1<<rand.IntN(20))
 		keys := make([]uint64, n)
@@ -379,6 +391,34 @@ func crossCheckFuseBuilder[T Unsigned](t *testing.T, bld *BinaryFuseBuilder, key
 	require.NoError(t, err)
 	_ = expected
 	require.Equal(t, *expected, filter)
+}
+
+// TestMakeBinaryFuseBuilder verifies that using MakeBinaryFuseBuilder prevents
+// all allocations.
+func TestMakeBinaryFuseBuilder(t *testing.T) {
+	maxSize := 1000 + rand.IntN(100_000)
+	keys := make([]uint64, maxSize)
+	for j := range keys {
+		keys[j] = rand.Uint64()
+	}
+	bld := MakeBinaryFuseBuilder[uint16](maxSize)
+	numAllocs := testing.AllocsPerRun(100, func() {
+		for range 10 {
+			var size int
+			if rand.IntN(100) == 1 {
+				size = maxSize
+			} else {
+				size = 1 + rand.IntN(maxSize)
+			}
+			if rand.IntN(2) == 0 {
+				// Smaller fingerprints can reuse the same preallocated space.
+				_, _ = BuildBinaryFuse[uint8](&bld, keys[:size])
+			} else {
+				_, _ = BuildBinaryFuse[uint16](&bld, keys[:size])
+			}
+		}
+	})
+	require.Zero(t, numAllocs)
 }
 
 // segmentLengthSizes contains represents the range of sizes [startSize, endSize] that
