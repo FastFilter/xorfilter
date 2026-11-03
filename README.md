@@ -9,7 +9,9 @@ They are also smaller than cuckoo filters. They are used in production systems s
 
 The Go xorfilter library is part of
 
+* [CockroachDB](https://github.com/cockroachdb/cockroach): a cloud native distributed SQL database
 * [Pebble](https://github.com/cockroachdb/pebble) from Cockroach Labs
+* [Erigon](https://github.com/erigontech/erigon): an Ethereum client
 * [coherence-go-client](https://github.com/oracle/coherence-go-client): the Oracle Coherence client
 * [Matrixone](https://github.com/matrixorigin/matrixone): a Hyperconverged cloud-edge native database
 
