@@ -20,7 +20,9 @@ jobs:
     - name: Install
       run: |
         sudo apt-get update
-        sudo apt install -y qemu-system-ppc64 qemu-user
+        # User-mode QEMU runs the ppc64 test binary. qemu-system-ppc64 is only a
+        # virtual package on Ubuntu 26.04, so apt cannot install it by that name.
+        sudo apt install -y qemu-user qemu-user-binfmt
     - name: Test
       run: |
         GOARCH=ppc64 go test ./...
